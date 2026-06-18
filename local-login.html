@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>传薪云 - 登录</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: #1f2937;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background:
+          radial-gradient(circle at 16% 18%, rgba(65, 122, 255, .16), transparent 26%),
+          radial-gradient(circle at 88% 82%, rgba(20, 184, 166, .12), transparent 28%),
+          linear-gradient(135deg, #eef4ff 0%, #f7fafc 44%, #eef7f6 100%);
+      }
+      .page {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(420px, 1fr) 460px;
+        align-items: center;
+        gap: 56px;
+        padding: 54px clamp(32px, 7vw, 112px);
+      }
+      .hero { max-width: 680px; }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 56px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        background: #2563eb;
+        box-shadow: 0 12px 24px rgba(37, 99, 235, .28);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(38px, 5vw, 58px);
+        line-height: 1.14;
+        letter-spacing: 0;
+        color: #172033;
+      }
+      .subtitle {
+        margin: 22px 0 0;
+        max-width: 560px;
+        color: #536178;
+        font-size: 18px;
+        line-height: 1.8;
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 46px;
+        max-width: 620px;
+      }
+      .feature {
+        border: 1px solid rgba(148, 163, 184, .26);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .58);
+        padding: 16px;
+      }
+      .feature strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #172033;
+        font-size: 15px;
+      }
+      .feature span {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .card {
+        width: 100%;
+        border: 1px solid rgba(226, 232, 240, .9);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 24px 70px rgba(15, 23, 42, .13);
+        padding: 34px 34px 28px;
+      }
+      .card-title {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .card-title h2 {
+        margin: 0;
+        font-size: 25px;
+        line-height: 1.2;
+        color: #111827;
+      }
+      .mode-link {
+        border: 0;
+        background: transparent;
+        color: #2563eb;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
+      }
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 4px;
+        margin-bottom: 22px;
+        border-radius: 8px;
+        background: #f1f5f9;
+      }
+      .tab {
+        height: 38px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .tab.active {
+        background: #fff;
+        color: #111827;
+        box-shadow: 0 1px 5px rgba(15, 23, 42, .08);
+      }
+      label {
+        display: block;
+        margin: 16px 0 8px;
+        color: #344054;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      input {
+        width: 100%;
+        height: 46px;
+        border: 1px solid #d7deea;
+        border-radius: 8px;
+        padding: 0 14px;
+        color: #111827;
+        background: #fff;
+        font-size: 15px;
+        outline: none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+      }
+      input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+      }
+      .submit {
+        width: 100%;
+        height: 46px;
+        margin-top: 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #2563eb;
+        color: #fff;
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 600;
+        box-shadow: 0 12px 24px rgba(37, 99, 235, .22);
+      }
+      .submit:hover { background: #1d4ed8; }
+      .message {
+        min-height: 22px;
+        margin-top: 13px;
+        color: #dc2626;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .message.success { color: #059669; }
+      .note {
+        margin: 16px 0 0;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .agreements {
+        margin-top: 18px;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .agreements a { color: #2563eb; text-decoration: none; }
+      @media (max-width: 900px) {
+        .page {
+          grid-template-columns: 1fr;
+          gap: 28px;
+          padding: 28px 18px;
+        }
+        .hero { display: none; }
+        .card { max-width: 460px; margin: 0 auto; padding: 28px 22px 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="brand">
+          <div class="logo">传</div>
+          <span>传薪云</span>
+        </div>
+        <h1>欢迎使用传薪云平台</h1>
+        <p class="subtitle">
+          面向 AI 训练、推理、渲染和科研计算的 GPU 算力服务入口。
+        </p>
+        <div class="features">
+          <div class="feature">
+            <strong>弹性算力</strong>
+            <span>按需选择 GPU 型号、镜像和租用时长。</span>
+          </div>
+          <div class="feature">
+            <strong>实例管理</strong>
+            <span>统一查看实例状态、连接方式和账单记录。</span>
+          </div>
+          <div class="feature">
+            <strong>账号体系</strong>
+            <span>使用邮箱或手机号注册传薪云演示账号。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">
+          <h2 id="heading">登录</h2>
+          <button id="modeLink" class="mode-link" type="button">没有账号？立即注册</button>
+        </div>
+        <div class="tabs" role="tablist">
+          <button id="loginTab" class="tab active" type="button">登录</button>
+          <button id="registerTab" class="tab" type="button">注册</button>
+        </div>
+        <form id="authForm">
+          <label for="account">邮箱或手机号</label>
+          <input id="account" autocomplete="username" placeholder="user@example.com 或 13800138000" required>
+          <label for="password">密码</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="请输入密码" required>
+          <button id="submitBtn" class="submit" type="submit">登录</button>
+          <div id="message" class="message"></div>
+        </form>
+        <p class="agreements">
+          登录即表示同意 <a href="/agreements" target="_blank">《传薪云服务条款》</a>。
+        </p>
+        <p class="note">
+          当前为本地演示账号系统，账号保存在本机演示数据库中；不会发送短信验证码，也不会调用智星云登录接口。
+        </p>
+      </section>
+    </main>
+
+    <script>
+      let mode = "login";
+
+      const heading = document.getElementById("heading");
+      const modeLink = document.getElementById("modeLink");
+      const loginTab = document.getElementById("loginTab");
+      const registerTab = document.getElementById("registerTab");
+      const submitBtn = document.getElementById("submitBtn");
+      const form = document.getElementById("authForm");
+      const accountInput = document.getElementById("account");
+      const passwordInput = document.getElementById("password");
+      const message = document.getElementById("message");
+
+      function legacyUsers() {
+        try { return JSON.parse(localStorage.getItem("cx_demo_users") || "{}"); }
+        catch { return {}; }
+      }
+
+      async function sha256(text) {
+        const bytes = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
+      }
+
+      function normalizeAccount(value) {
+        return value.trim().toLowerCase();
+      }
+
+      function validAccount(account) {
+        return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(account) || /^1\d{10}$/.test(account);
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        const isLogin = mode === "login";
+        loginTab.classList.toggle("active", isLogin);
+        registerTab.classList.toggle("active", !isLogin);
+        heading.textContent = isLogin ? "登录" : "注册";
+        submitBtn.textContent = isLogin ? "登录" : "注册并登录";
+        modeLink.textContent = isLogin ? "没有账号？立即注册" : "已有账号？立即登录";
+        passwordInput.setAttribute("autocomplete", isLogin ? "current-password" : "new-password");
+        message.textContent = "";
+        message.className = "message";
+      }
+
+      function signIn(account, token) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("sessionId", token);
+        localStorage.setItem("cx_demo_user", JSON.stringify({ account, token }));
+        location.replace("/store");
+      }
+
+      async function authRequest(path, account, password) {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ account, password })
+        });
+        let payload = null;
+        try { payload = await response.json(); } catch { payload = {}; }
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.reason || "登录请求失败");
+        }
+        return payload;
+      }
+
+      async function restoreSession() {
+        try {
+          const response = await fetch("/local-auth/session", { credentials: "same-origin" });
+          const payload = await response.json();
+          if (payload.ok && payload.token) {
+            localStorage.setItem("token", payload.token);
+            localStorage.setItem("sessionId", payload.token);
+            localStorage.setItem("cx_demo_user", JSON.stringify({ account: payload.account, token: payload.token }));
+            location.replace("/store");
+          }
+        } catch {
+          // Keep login form available when there is no saved session.
+        }
+      }
+
+      loginTab.addEventListener("click", () => setMode("login"));
+      registerTab.addEventListener("click", () => setMode("register"));
+      modeLink.addEventListener("click", () => setMode(mode === "login" ? "register" : "login"));
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const account = normalizeAccount(accountInput.value);
+        const password = passwordInput.value;
+        submitBtn.disabled = true;
+        message.textContent = "";
+        if (!validAccount(account)) {
+          message.textContent = "请输入有效邮箱或 11 位手机号";
+          submitBtn.disabled = false;
+          return;
+        }
+        if (password.length < 6) {
+          message.textContent = "密码至少 6 位";
+          submitBtn.disabled = false;
+          return;
+        }
+        try {
+          const payload = await authRequest(mode === "register" ? "/local-auth/register" : "/local-auth/login", account, password);
+          message.textContent = mode === "register" ? "注册成功，正在进入平台" : "登录成功，正在进入平台";
+          message.className = "message success";
+          signIn(payload.account || account, payload.token);
+        } catch (error) {
+          if (mode === "login") {
+            const legacy = legacyUsers()[account];
+            const passwordHash = legacy ? await sha256(password) : "";
+            if (legacy && legacy.passwordHash === passwordHash) {
+              try {
+                const payload = await authRequest("/local-auth/register", account, password);
+                message.textContent = "账号已迁移，正在进入平台";
+                message.className = "message success";
+                signIn(payload.account || account, payload.token);
+                return;
+              } catch {
+                try {
+                  const payload = await authRequest("/local-auth/login", account, password);
+                  signIn(payload.account || account, payload.token);
+                  return;
+                } catch {
+                  // Fall through to the original error message.
+                }
+              }
+            }
+          }
+          message.textContent = error.message || "账号或密码错误";
+          message.className = "message";
+          submitBtn.disabled = false;
+        }
+      });
+
+      restoreSession();
+    </script>
+  </body>
+</html>

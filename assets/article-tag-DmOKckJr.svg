@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="30px" height="30px" viewBox="0 0 30 30" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>编组 5</title>
+    <defs>
+        <path d="M3,0.681566807 L6.19858366,0.681566807 C7.09104035,0.681566807 7.94771217,1.03247788 8.58371001,1.65856549 C9.21970785,2.2846531 10.0763797,2.63556417 10.9688364,2.63556417 L22.0758277,2.63556417 C23.7326819,2.63556417 25.0758277,3.97870992 25.0758277,5.63556417 L25.0758277,19.9367618 C25.0758277,23.2504703 22.3895362,25.9367618 19.0758277,25.9367618 L5.01009585,25.9367618 C2.24945264,25.9347626 0.0111998312,23.6974044 0.00809708695,20.9367622 L0.00119926066,3.68156657 C-0.000462093668,2.02471293 1.34194662,0.681030359 2.99880074,0.680368026 C2.99920049,0.680367866 2.99960025,0.680367786 3,0.681566807 Z" id="path-1"></path>
+        <filter x="-10.0%" y="-9.9%" width="119.9%" height="119.8%" filterUnits="objectBoundingBox" id="filter-2">
+            <feGaussianBlur stdDeviation="1" in="SourceAlpha" result="shadowBlurInner1"></feGaussianBlur>
+            <feOffset dx="3" dy="1" in="shadowBlurInner1" result="shadowOffsetInner1"></feOffset>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.843525354   0 0 0 0 0.876557785   0 0 0 0 0.99682971  0 0 0 1 0" type="matrix" in="shadowInnerInner1"></feColorMatrix>
+        </filter>
+        <linearGradient x1="7.89007535%" y1="24.4056459%" x2="92.5917964%" y2="65.762426%" id="linearGradient-3">
+            <stop stop-color="#4A71FF" offset="0%"></stop>
+            <stop stop-color="#2854F5" offset="100%"></stop>
+        </linearGradient>
+        <path d="M7.72720453,25.957557 L3.86865019,25.957557 L4.06721089,25.9525363 C6.10595471,25.8491921 7.72720453,24.163429 7.72720453,22.0990027 L7.72720453,11.7757254 C7.72720453,10.6711559 8.62263503,9.77572537 9.72720453,9.77572537 L26,9.77572537 C27.1045695,9.77572537 28,10.6711559 28,11.7757254 L28,23.9367618 C28,25.0413313 27.1045695,25.9367618 26,25.9367618 L7.72720453,25.9367618 L7.72720453,25.957557 Z" id="path-4"></path>
+        <filter x="-33.2%" y="-55.6%" width="158.0%" height="186.5%" filterUnits="objectBoundingBox" id="filter-5">
+            <feOffset dx="-1" dy="-2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.102603545   0 0 0 0 0.111593916   0 0 0 0 0.260076993  0 0 0 0.101398601 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="文档" transform="translate(-400.000000, -206.000000)">
+            <g id="编组-6" transform="translate(400.000000, 206.000000)">
+                <g id="编组-4" transform="translate(1.000000, 2.042443)">
+                    <g id="矩形">
+                        <use fill="#DFE7FC" fill-rule="evenodd" xlink:href="#path-1"></use>
+                        <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                    </g>
+                    <path d="M7.83499276,4.43907646 L21.073677,4.4200743 C23.2828138,4.41690341 25.0762434,6.20519206 25.0794143,8.41432878 C25.07942,8.41831164 25.0794198,8.4222945 25.0794136,8.42627736 L25.0653929,17.4614536 C25.061972,19.6659252 23.275611,21.4520781 21.0711391,21.4552423 L7.83245479,21.4742445 C5.62331807,21.4774154 3.8298884,19.6891267 3.82671751,17.47999 C3.8267118,17.4760071 3.82671203,17.4720243 3.82671821,17.4680414 L3.84073897,8.43286516 C3.84415986,6.22839359 5.6305208,4.44224066 7.83499276,4.43907646 Z" id="矩形" fill="url(#linearGradient-3)" transform="translate(14.453066, 12.947159) rotate(-33.000000) translate(-14.453066, -12.947159) "></path>
+                    <g id="形状结合">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-5)" xlink:href="#path-4"></use>
+                        <use fill-opacity="0.3" fill="#A2B6FF" fill-rule="evenodd" xlink:href="#path-4"></use>
+                    </g>
+                    <ellipse id="椭圆形" fill="#FFFFFF" cx="12.6422678" cy="16.9190157" rx="1.14837927" ry="1.1521436"></ellipse>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

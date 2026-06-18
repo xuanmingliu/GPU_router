@@ -1,0 +1,282 @@
+[
+  {
+    "cluster": "k8s_xingyiAI_2",
+    "jobId": "job-a800-42514458",
+    "name": "job-a800-42514458",
+    "partition": "xy-a800x",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 6,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYAIFS00/thzskj_wfeng33_1/.bihu/job-a800-42514458",
+    "createdAt": "2026-06-16T00:55:50+08:00",
+    "runId": "2026-06-15T16-55-37-827Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "运行中",
+      "phase": "running",
+      "done": false,
+      "status": 2,
+      "childStatus": 2,
+      "reason": "Status:\n\tRunning\t\t\nConditions:\n\tInitialized\t\t\n\tReady\t\t\n\tContainersReady\t\t\n\tPodScheduled\t\t\n"
+    },
+    "upstream": {
+      "status": 2,
+      "createdAt": "2026-06-16T00:55:49+08:00",
+      "updatedAt": "0001-01-01T00:00:00Z",
+      "startedAt": "2026-06-16T00:55:50+08:00",
+      "endAt": null,
+      "nodeName": "",
+      "ip": "10.106.16.239:(webssh:TCP:7681,jupyter-lab:TCP:8888,test:TCP:22)",
+      "jobFee": 155.71066527908891,
+      "proxies": [
+        {
+          "id": 780877,
+          "name": "webssh",
+          "user_name": "thzskj_wfeng33_1",
+          "entry_name": "xy2",
+          "job_id": 1004458,
+          "type": 1,
+          "protocol": 1,
+          "domain": "",
+          "cert_file": null,
+          "key_file": null,
+          "source_port": 8888,
+          "target_port": 7681,
+          "service_port": 7681,
+          "service_protocol": "TCP",
+          "ip": "10.106.16.239",
+          "control": 3,
+          "share_code": ""
+        },
+        {
+          "id": 780878,
+          "name": "jupyter-lab",
+          "user_name": "thzskj_wfeng33_1",
+          "entry_name": "xy2",
+          "job_id": 1004458,
+          "type": 1,
+          "protocol": 1,
+          "domain": "",
+          "cert_file": null,
+          "key_file": null,
+          "source_port": 8888,
+          "target_port": 8888,
+          "service_port": 8888,
+          "service_protocol": "TCP",
+          "ip": "10.106.16.239",
+          "control": 3,
+          "share_code": ""
+        },
+        {
+          "id": 780879,
+          "name": "test",
+          "user_name": "thzskj_wfeng33_1",
+          "entry_name": "xy2",
+          "job_id": 1004458,
+          "type": 2,
+          "protocol": 3,
+          "domain": "",
+          "cert_file": null,
+          "key_file": null,
+          "source_port": 39174,
+          "target_port": 22,
+          "service_port": 22,
+          "service_protocol": "TCP",
+          "ip": "10.106.16.239",
+          "control": 3,
+          "share_code": ""
+        }
+      ]
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:37.998Z",
+    "accessMessage": "SSH 非固定端口入口已存在"
+  },
+  {
+    "cluster": "k8s_xingyiAI_2",
+    "jobId": "job-a800-29439148",
+    "name": "job-a800-29439148",
+    "partition": "xy-a800x",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 6,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYAIFS00/thzskj_wfeng33_1/.bihu/job-a800-29439148",
+    "createdAt": "2026-06-15T21:17:38+08:00",
+    "runId": "2026-06-15T13-17-30-412Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "已完成",
+      "phase": "succeeded",
+      "done": true,
+      "status": 7,
+      "childStatus": 4,
+      "reason": "Status:\n\tRunning\t\t\nConditions:\n\tInitialized\t\t\n\tReady\t\t\n\tContainersReady\t\t\n\tPodScheduled\t\t\n"
+    },
+    "upstream": {
+      "status": 7,
+      "createdAt": "2026-06-15T21:17:37+08:00",
+      "updatedAt": "2026-06-16T00:36:05+08:00",
+      "startedAt": "2026-06-15T21:18:00+08:00",
+      "endAt": "2026-06-16T00:36:04+08:00",
+      "nodeName": "",
+      "ip": "10.111.255.237:(joba80029439148-openssh:TCP:22,webssh:TCP:7681,jupyter-lab:TCP:8888)",
+      "jobFee": 264.75555555555553,
+      "proxies": []
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:38.039Z",
+    "accessMessage": ""
+  },
+  {
+    "cluster": "k8s_xingyiAI",
+    "jobId": "job-a800-48025739",
+    "name": "job-a800-48025739",
+    "partition": "xy-a800",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 6,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYFS01/HOME/thzskj_wfeng33/thzskj_wfeng33_1/.bihu/job-a800-48025739",
+    "createdAt": "2026-06-13T18:54:17+08:00",
+    "runId": "2026-06-13T10-54-08-681Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "已完成",
+      "phase": "succeeded",
+      "done": true,
+      "status": 7,
+      "childStatus": 4,
+      "reason": "Status:\n\tRunning\t\t\nConditions:\n\tInitialized\t\t\n\tReady\t\t\n\tContainersReady\t\t\n\tPodScheduled\t\t\n"
+    },
+    "upstream": {
+      "status": 7,
+      "createdAt": "2026-06-13T18:54:15+08:00",
+      "updatedAt": "2026-06-15T19:12:55+08:00",
+      "startedAt": "2026-06-13T18:54:17+08:00",
+      "endAt": "2026-06-15T19:12:54+08:00",
+      "nodeName": "",
+      "ip": "10.100.229.10:(joba80048025739-openssh:TCP:22,webssh:TCP:7681,jupyter-lab:TCP:8888)",
+      "jobFee": 3865.488888888889,
+      "proxies": []
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:38.079Z",
+    "accessMessage": ""
+  },
+  {
+    "cluster": "k8s_xingyiAI_2",
+    "jobId": "job-a800-29664192",
+    "name": "job-a800-29664192",
+    "partition": "xy-a800x",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 6,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYAIFS00/thzskj_wfeng33_1/.bihu/job-a800-29664192",
+    "createdAt": "2026-06-13T13:47:56+08:00",
+    "runId": "2026-06-13T05-47-48-041Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "已完成",
+      "phase": "succeeded",
+      "done": true,
+      "status": 4,
+      "childStatus": 3,
+      "reason": "Status:\n\tPending\t\t\nConditions:\n\tPodScheduled\tUnschedulable\t0/79 nodes are available: 1 node(s) had untolerated taint {liuhai-falco-test: true}, 1 node(s) had untolerated taint {lzh: }, 1 node(s) had untolerated taint {podnetworkerr: debug}, 1 node(s) had untolerated taint {private_part: }, 1 node(s) had untolerated taint {wky_to_restart: }, 2 Insufficient memory, 2 Insufficient nvidia.com/gpu, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) had untolerated taint {starlight-scheduler1: yaoxj}, 20 node(s) didn't match Pod's node affinity/selector, 3 node(s) had untolerated taint {starlight-scheduler: terminating_need_reboot}, 34 node(s) had untolerated taint {starlight-scheduler: starlight}, 4 node(s) had untolerated taint {yxj_to_maintenance: }, 7 node(s) had untolerated taint {starlight-scheduler: zhk_need_reboot}. preemption: 0/79 nodes are available: 2 No preemption victims found for incoming pod, 77 Preemption is not helpful for scheduling..\n"
+    },
+    "upstream": {
+      "status": 4,
+      "createdAt": "2026-06-13T13:47:54+08:00",
+      "updatedAt": "2026-06-13T17:44:24+08:00",
+      "startedAt": null,
+      "endAt": "2026-06-13T17:44:24+08:00",
+      "nodeName": "",
+      "ip": "10.98.106.121:(joba80029664192-openssh:TCP:22,webssh:TCP:7681,jupyter-lab:TCP:8888)",
+      "jobFee": 0,
+      "proxies": []
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:38.118Z",
+    "accessMessage": ""
+  },
+  {
+    "cluster": "k8s_xingyiAI_2",
+    "jobId": "job-a100-23939385",
+    "name": "job-a100-23939385",
+    "partition": "xy-a100",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 12,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYAIFS00/thzskj_wfeng33_1/.bihu/job-a100-23939385",
+    "createdAt": "2026-06-13T12:12:28+08:00",
+    "runId": "2026-06-13T04-12-22-042Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "已完成",
+      "phase": "succeeded",
+      "done": true,
+      "status": 4,
+      "childStatus": 3,
+      "reason": "Status:\n\tPending\t\t\nConditions:\n\tPodScheduled\tUnschedulable\t0/79 nodes are available: 1 Insufficient memory, 1 Insufficient nvidia.com/gpu, 1 node(s) had untolerated taint {liuhai-falco-test: true}, 1 node(s) had untolerated taint {lzh: }, 1 node(s) had untolerated taint {podnetworkerr: debug}, 1 node(s) had untolerated taint {private_part: }, 1 node(s) had untolerated taint {wky_to_restart: }, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) had untolerated taint {starlight-scheduler1: yaoxj}, 21 node(s) didn't match Pod's node affinity/selector, 3 node(s) had untolerated taint {starlight-scheduler: terminating_need_reboot}, 34 node(s) had untolerated taint {starlight-scheduler: starlight}, 4 node(s) had untolerated taint {yxj_to_maintenance: }, 7 node(s) had untolerated taint {starlight-scheduler: zhk_need_reboot}. preemption: 0/79 nodes are available: 1 No preemption victims found for incoming pod, 78 Preemption is not helpful for scheduling..\n"
+    },
+    "upstream": {
+      "status": 4,
+      "createdAt": "2026-06-13T12:12:27+08:00",
+      "updatedAt": "2026-06-13T12:14:04+08:00",
+      "startedAt": null,
+      "endAt": "2026-06-13T12:14:04+08:00",
+      "nodeName": "",
+      "ip": "10.98.164.173:(joba10023939385-openssh:TCP:22,webssh:TCP:7681,jupyter-lab:TCP:8888)",
+      "jobFee": 0,
+      "proxies": []
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:38.159Z",
+    "accessMessage": ""
+  },
+  {
+    "cluster": "k8s_xingyiAI_2",
+    "jobId": "job-a800-84663929",
+    "name": "job-a800-84663929",
+    "partition": "xy-a800x",
+    "image": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
+    "resources": {
+      "cpu": 6,
+      "gpu": 1,
+      "memory": 120
+    },
+    "workDir": "/XYAIFS00/thzskj_wfeng33_1/.bihu/job-a800-84663929",
+    "createdAt": "2026-06-13T01:17:54+08:00",
+    "runId": "2026-06-12T17-17-47-570Z",
+    "source": "direct-api",
+    "summary": {
+      "label": "已完成",
+      "phase": "succeeded",
+      "done": true,
+      "status": 4,
+      "childStatus": 3,
+      "reason": "Status:\n\tPending\t\t\nConditions:\n\tPodScheduled\tUnschedulable\t0/79 nodes are available: 1 node(s) had untolerated taint {liuhai-falco-test: true}, 1 node(s) had untolerated taint {lzh: }, 1 node(s) had untolerated taint {podnetworkerr: debug}, 1 node(s) had untolerated taint {private_part: }, 1 node(s) had untolerated taint {wky_to_restart: }, 2 Insufficient memory, 2 Insufficient nvidia.com/gpu, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 2 node(s) had untolerated taint {starlight-scheduler1: yaoxj}, 21 node(s) didn't match Pod's node affinity/selector, 3 node(s) had untolerated taint {starlight-scheduler: terminating_need_reboot}, 33 node(s) had untolerated taint {starlight-scheduler: starlight}, 4 node(s) had untolerated taint {yxj_to_maintenance: }, 7 node(s) had untolerated taint {starlight-scheduler: zhk_need_reboot}. preemption: 0/79 nodes are available: 2 No preemption victims found for incoming pod, 77 Preemption is not helpful for scheduling..\n"
+    },
+    "upstream": {
+      "status": 4,
+      "createdAt": "2026-06-13T01:17:52+08:00",
+      "updatedAt": "2026-06-13T01:18:55+08:00",
+      "startedAt": null,
+      "endAt": "2026-06-13T01:18:55+08:00",
+      "nodeName": "",
+      "ip": "10.97.119.223:(joba80084663929-openssh:TCP:22,webssh:TCP:7681,jupyter-lab:TCP:8888)",
+      "jobFee": 0,
+      "proxies": []
+    },
+    "lastStatusCheckedAt": "2026-06-15T18:52:38.202Z",
+    "accessMessage": ""
+  }
+]

@@ -1,0 +1,1 @@
+import{c9 as p,r as o}from"./index-CmwsSpf2.js";const n=p("imgMapGpu",()=>{const r=o({});return{imgMapGpu:r,setImgMapGpu:a=>{let e={...r.value,...a};for(const t in e)Array.isArray(e[t])&&(e[t]=[...new Set(e[t])]);r.value=e}}});export{n as u};

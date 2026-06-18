@@ -1,0 +1,1 @@
+import{aY as a}from"./index-CmwsSpf2.js";const s=()=>a.post("/get_lab_course",{}),c=t=>a.post("/find_unique_article_tags",t),i=t=>a.post("/get_lab_article",t),o=t=>a.post("/get_lab_article_with_tag",t),_=t=>a.post("/get_lab_article_by_id",t);export{i as a,o as b,_ as c,c as f,s as g};

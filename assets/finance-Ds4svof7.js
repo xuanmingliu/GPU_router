@@ -1,0 +1,1 @@
+import{aY as e}from"./index-CmwsSpf2.js";const s=t=>e.post("/finance/get_withdraw_conditions",t),i=t=>e.post("/finance/create_withdraw_request",t),n=t=>e.post("/finance/get_withdraw_request_list",t),r=t=>e.post("/finance/cancel_withdraw_request",t);export{n as a,r as b,i as c,s as g};

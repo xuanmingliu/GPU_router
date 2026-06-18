@@ -1,0 +1,1 @@
+import{aY as t,c9 as r,J as c}from"./index-CmwsSpf2.js";const n=()=>t.post("/get_price_config",{}),a=r("price",()=>({priceInfo:c(async()=>{const{data:e}=await n();return e.data},null)}));export{a as u};

@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>星光作业提交 Mini Test</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f5f7fb;
+        color: #1f2937;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      main {
+        max-width: 1040px;
+        margin: 28px auto;
+        padding: 0 18px;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 24px;
+      }
+      h1 { margin: 0 0 6px; font-size: 22px; }
+      .hint { margin: 0 0 22px; color: #64748b; font-size: 14px; }
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px 18px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: #475569;
+        margin-bottom: 6px;
+      }
+      input, select {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #d6dbe4;
+        border-radius: 6px;
+        padding: 0 11px;
+        font-size: 14px;
+      }
+      .full { grid-column: 1 / -1; }
+      .actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 18px;
+      }
+      button {
+        height: 38px;
+        border: 0;
+        border-radius: 6px;
+        background: #2563eb;
+        color: white;
+        padding: 0 16px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .field-combo {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 70px;
+        gap: 8px;
+      }
+      .field-combo input {
+        background: #fff;
+        color: #334155;
+      }
+      .secondary {
+        background: #fff;
+        color: #1f2937;
+        border: 1px solid #d6dbe4;
+      }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, .55);
+        padding: 20px;
+        z-index: 20;
+      }
+      .modal-backdrop.open { display: flex; }
+      .file-dialog {
+        width: min(980px, 100%);
+        max-height: calc(100vh - 48px);
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 18px 55px rgba(15, 23, 42, .25);
+        overflow: hidden;
+      }
+      .dialog-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 46px;
+        padding: 0 18px;
+        background: linear-gradient(90deg, #7c83f3, #eef2ff);
+        color: #fff;
+        font-size: 16px;
+      }
+      .icon-button {
+        width: 36px;
+        height: 32px;
+        padding: 0;
+        border-radius: 4px;
+        background: #fff;
+        color: #2563eb;
+        border: 1px solid #d6dbe4;
+      }
+      .dialog-title .icon-button {
+        background: transparent;
+        border: 0;
+        color: #64748b;
+        font-size: 20px;
+      }
+      .dialog-body {
+        padding: 20px;
+      }
+      .remote-box {
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        padding: 14px 16px 18px;
+      }
+      .remote-label {
+        margin-bottom: 10px;
+        color: #64748b;
+        font-size: 13px;
+      }
+      .path-row {
+        display: grid;
+        grid-template-columns: 230px minmax(0, 1fr) 44px;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .remote-tip {
+        margin: 0 0 12px;
+        color: #64748b;
+        font-size: 13px;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+      .toolbar .spacer { flex: 1; }
+      .search-box {
+        width: 210px;
+        height: 32px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th, td {
+        height: 36px;
+        border-bottom: 1px solid #eef2f7;
+        text-align: left;
+        padding: 0 8px;
+      }
+      th { color: #64748b; font-weight: 600; }
+      tr.file-row { cursor: pointer; }
+      tr.file-row.selected { background: #eaf2ff; }
+      .file-icon { color: #f59e0b; margin-right: 6px; }
+      .dialog-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 20px 18px;
+      }
+      .hidden-file { display: none; }
+      button:disabled { opacity: .55; cursor: default; }
+      pre {
+        margin-top: 18px;
+        max-height: 420px;
+        overflow: auto;
+        padding: 14px;
+        background: #0f172a;
+        color: #dbeafe;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      a { color: #2563eb; }
+      @media (max-width: 720px) {
+        form { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel">
+        <h1>星光作业提交 Mini Test</h1>
+        <p class="hint">这个页面只验证“我们的前端输入 -> 我们后端 Playwright -> 星光页面填表”。默认 dry-run，不点击最终提交。</p>
+
+        <form id="job-form">
+          <div>
+            <label for="jobName">作业名称</label>
+            <input id="jobName" name="jobName" value="pytorch-ng-11171946">
+          </div>
+          <div>
+            <label for="image">镜像选择</label>
+            <select id="image" name="image">
+              <option value="ngc-pytorch:25.02-py3-sshd-v3">ngc-pytorch:25.02-py3-sshd-v3 - python=3.12.3 / pytorch=2.7.0 / cuda=12.8</option>
+              <option value="ngc-pytorch:23.12-py3-sshd-v3">ngc-pytorch:23.12-py3-sshd-v3 - python=3.10.12 / pytorch=2.2.0 / cuda=12.3</option>
+              <option value="ngc-pytorch:22.04-py3-sshd-v3">ngc-pytorch:22.04-py3-sshd-v3 - python=3.8.13 / pytorch=1.12.0 / cuda=11.6</option>
+              <option value="ngc-pytorch:21.11-py3-sshd-v3">ngc-pytorch:21.11-py3-sshd-v3 - python=3.8.12 / pytorch=1.11.0 / cuda=11.5</option>
+            </select>
+          </div>
+          <div>
+            <label for="cluster">集群选择</label>
+            <select id="cluster" name="cluster">
+              <option value="k8s_xingyiAI_2">k8s_xingyiAI_2 - 星逸智算集群</option>
+              <option value="k8s_xingyiAI">k8s_xingyiAI - 星逸AI集群</option>
+              <option value="k8s_xingyi">k8s_xingyi - 星逸CPU集群</option>
+              <option value="k8s_jove">k8s_jove - Jove集群</option>
+              <option value="k8s_ss01">k8s_ss01 - SS01集群</option>
+              <option value="k8s_venus">k8s_venus - 启明集群</option>
+            </select>
+          </div>
+          <div>
+            <label for="partition">分区选择</label>
+            <select id="partition" name="partition"></select>
+          </div>
+          <div>
+            <label for="plan">套餐选择</label>
+            <select id="plan" name="plan"></select>
+          </div>
+          <div>
+            <label for="script">脚本选择</label>
+            <div class="field-combo">
+              <input id="script" name="script" value="" placeholder="点击选择文件" readonly>
+              <button id="open-script-dialog" class="secondary" type="button">选择</button>
+            </div>
+          </div>
+          <div class="full">
+            <label for="submitMode">提交模式</label>
+            <select id="submitMode" name="submitMode">
+              <option value="dry-run">dry-run：只填表，不提交</option>
+              <option value="real">real：真实提交，需要后端 ALLOW_REAL_SUBMIT=1</option>
+            </select>
+          </div>
+          <div class="full">
+            <label for="submitEngine">提交方式</label>
+            <select id="submitEngine" name="submitEngine">
+              <option value="playwright">Playwright：模拟真人操作星光网页</option>
+              <option value="direct">Direct API：直接请求星光 /api/job/submit（当前仅无脚本调试模式）</option>
+            </select>
+          </div>
+        </form>
+
+        <div class="actions">
+          <button id="submit">运行 dry-run</button>
+          <span id="status" class="hint"></span>
+        </div>
+
+        <pre id="output">等待运行...</pre>
+      </section>
+    </main>
+
+    <div id="script-modal" class="modal-backdrop" aria-hidden="true">
+      <section class="file-dialog" role="dialog" aria-modal="true" aria-labelledby="script-dialog-title">
+        <div class="dialog-title">
+          <span id="script-dialog-title">选择目标文件/文件夹</span>
+          <button id="close-script-dialog" class="icon-button" type="button" title="关闭">×</button>
+        </div>
+        <div class="dialog-body">
+          <div class="remote-box">
+            <div class="remote-label">远程服务器</div>
+            <div class="path-row">
+              <select>
+                <option>XYFS01</option>
+              </select>
+              <input value="/XYFS01/HOME/thzskj_wfeng33/thzskj_wfeng33_1" readonly>
+              <button class="icon-button" type="button" title="搜索">⌕</button>
+            </div>
+            <p class="remote-tip">提示：在上传大文件时，为确保上传效率，请使用 UDT 客户端传输</p>
+            <div class="toolbar">
+              <button class="icon-button" type="button" title="首页">⌂</button>
+              <button class="icon-button" type="button" title="上一级">↑</button>
+              <button class="icon-button" type="button" title="后退">‹</button>
+              <button class="icon-button" type="button" title="前进">›</button>
+              <button class="icon-button" type="button" title="刷新">↻</button>
+              <span class="spacer"></span>
+              <input class="search-box" placeholder="搜索当前目录文件">
+              <button class="icon-button" type="button" title="预览">◎</button>
+              <button class="icon-button" type="button" title="下载">⇩</button>
+              <button id="modal-upload" class="icon-button" type="button" title="上传">⇧</button>
+              <input id="modal-file-input" class="hidden-file" type="file" accept=".sh,.bash,.txt">
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>名称</th>
+                  <th>属主</th>
+                  <th>权限</th>
+                  <th>类型</th>
+                  <th>大小</th>
+                  <th>修改日期</th>
+                </tr>
+              </thead>
+              <tbody id="remote-file-list"></tbody>
+            </table>
+            <p class="remote-tip" id="remote-total">Total 1</p>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button id="cancel-script-dialog" class="secondary" type="button">Cancel</button>
+          <button id="confirm-script-dialog" type="button">Confirm</button>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const form = document.querySelector("#job-form");
+      const button = document.querySelector("#submit");
+      const statusEl = document.querySelector("#status");
+      const output = document.querySelector("#output");
+      const clusterEl = document.querySelector("#cluster");
+      const partitionEl = document.querySelector("#partition");
+      const planEl = document.querySelector("#plan");
+      const submitModeEl = document.querySelector("#submitMode");
+      const submitEngineEl = document.querySelector("#submitEngine");
+      const scriptEl = document.querySelector("#script");
+      const scriptModal = document.querySelector("#script-modal");
+      const remoteFileList = document.querySelector("#remote-file-list");
+      const remoteTotal = document.querySelector("#remote-total");
+      const modalFileInput = document.querySelector("#modal-file-input");
+      let selectedScriptFile = null;
+      let highlightedScriptFile = null;
+      let backendDryRunOnly = true;
+      const remoteFiles = [
+        {
+          name: "HDD_POOL",
+          owner: "-",
+          permission: "Lrwxrwxrwx",
+          type: "符号链接（文件夹）",
+          size: "-",
+          modified: "2026-04-07 14:18:10",
+          file: null,
+        },
+      ];
+
+      const partitionsByCluster = {
+        k8s_xingyiAI_2: [
+          ["xy-a100", "xy-a100"],
+          ["xy-a800x", "xy-a800x"],
+          ["xy-h100", "xy-h100"],
+          ["xy-h100x", "xy-h100x"],
+          ["xy-v100x", "xy-v100x"],
+        ],
+        k8s_xingyiAI: [
+          ["xy-a800", "xy-a800"],
+          ["a800-mig-3g.40gb-week", "a800-mig-3g.40gb-week"],
+          ["mig-realtime", "mig-realtime"],
+        ],
+        k8s_xingyi: [
+          ["x86-cpu", "x86-cpu"],
+        ],
+        k8s_jove: [
+          ["gpu-a100", "gpu-a100"],
+        ],
+        k8s_ss01: [
+          ["gpu-a100nv", "gpu-a100nv"],
+        ],
+        k8s_venus: [
+          ["venus-gpu", "venus-gpu"],
+          ["venus-gpu-localdisk", "venus-gpu-localdisk"],
+          ["venus-bigmem", "venus-bigmem"],
+        ],
+      };
+
+      const plansByClusterPartition = {
+        "k8s_xingyi/x86-cpu": [
+          ["default:4核/0块/30GiB", "4核/0块/30GiB"],
+          ["default:8核/0块/60GiB", "8核/0块/60GiB"],
+          ["default:16核/0块/120GiB", "16核/0块/120GiB"],
+          ["default:32核/0块/240GiB", "32核/0块/240GiB"],
+          ["default:64核/0块/480GiB", "64核/0块/480GiB"],
+        ],
+        "k8s_xingyiAI/xy-a800": [
+          ["default:6核/1块/120GiB", "6核/1块/120GiB"],
+          ["default:12核/2块/240GiB", "12核/2块/240GiB"],
+          ["default:24核/4块/480GiB", "24核/4块/480GiB"],
+          ["default:48核/8块/960GiB", "48核/8块/960GiB"],
+        ],
+        "k8s_xingyiAI/a800-mig-3g.40gb-week": [
+          ["default:6核/1块/60GiB", "6核/1块/60GiB"],
+          ["default:12核/2块/120GiB", "12核/2块/120GiB"],
+          ["default:24核/4块/240GiB", "24核/4块/240GiB"],
+        ],
+        "k8s_xingyiAI/mig-realtime": [
+          ["default:4核/1块/41GiB", "4核/1块/41GiB"],
+        ],
+        "k8s_xingyiAI_2/xy-a100": [
+          ["default:12核/1块/120GiB", "12核/1块/120GiB"],
+          ["default:24核/2块/240GiB", "24核/2块/240GiB"],
+          ["default:48核/4块/480GiB", "48核/4块/480GiB"],
+          ["default:96核/8块/960GiB", "96核/8块/960GiB"],
+        ],
+        "k8s_xingyiAI_2/xy-a800x": [
+          ["default:6核/1块/120GiB", "6核/1块/120GiB"],
+          ["default:12核/2块/240GiB", "12核/2块/240GiB"],
+          ["default:24核/4块/480GiB", "24核/4块/480GiB"],
+          ["default:48核/8块/960GiB", "48核/8块/960GiB"],
+        ],
+        "k8s_xingyiAI_2/xy-h100": [
+          ["default:14核/1块/240GiB", "14核/1块/240GiB"],
+          ["default:28核/2块/480GiB", "28核/2块/480GiB"],
+          ["default:56核/4块/960GiB", "56核/4块/960GiB"],
+          ["default:112核/8块/1920GiB", "112核/8块/1920GiB"],
+        ],
+        "k8s_xingyiAI_2/xy-h100x": [
+          ["default:14核/1块/240GiB", "14核/1块/240GiB"],
+          ["default:28核/2块/480GiB", "28核/2块/480GiB"],
+          ["default:56核/4块/960GiB", "56核/4块/960GiB"],
+          ["default:112核/8块/1920GiB", "112核/8块/1920GiB"],
+        ],
+        "k8s_xingyiAI_2/xy-v100x": [
+          ["default:12核/1块/60GiB", "12核/1块/60GiB"],
+          ["default:24核/2块/120GiB", "24核/2块/120GiB"],
+          ["default:48核/4块/240GiB", "48核/4块/240GiB"],
+        ],
+        "k8s_jove/gpu-a100": [
+          ["default:6核/1块/120GiB", "6核/1块/120GiB"],
+          ["default:12核/2块/240GiB", "12核/2块/240GiB"],
+          ["default:24核/4块/480GiB", "24核/4块/480GiB"],
+          ["default:48核/8块/960GiB", "48核/8块/960GiB"],
+        ],
+        "k8s_ss01/gpu-a100nv": [
+          ["default:7核/1块/120GiB", "7核/1块/120GiB"],
+          ["default:14核/2块/240GiB", "14核/2块/240GiB"],
+          ["default:28核/4块/480GiB", "28核/4块/480GiB"],
+          ["default:56核/8块/960GiB", "56核/8块/960GiB"],
+        ],
+        "k8s_venus/venus-gpu": [
+          ["default:6核/1块/60GiB", "6核/1块/60GiB"],
+          ["default:12核/2块/120GiB", "12核/2块/120GiB"],
+          ["default:24核/4块/240GiB", "24核/4块/240GiB"],
+        ],
+        "k8s_venus/venus-gpu-localdisk": [
+          ["default:8核/0块/70GiB", "8核/0块/70GiB"],
+          ["default:5核/1块/43GiB", "5核/1块/43GiB"],
+          ["default:14核/2块/120GiB", "14核/2块/120GiB"],
+          ["default:28核/4块/240GiB", "28核/4块/240GiB"],
+          ["default:8核/4块/240GiB", "8核/4块/240GiB"],
+        ],
+        "k8s_venus/venus-bigmem": [
+          ["default:9核/0块/185GiB", "9核/0块/185GiB"],
+          ["default:18核/0块/370GiB", "18核/0块/370GiB"],
+          ["default:36核/0块/740GiB", "36核/0块/740GiB"],
+        ],
+      };
+
+      function setOptions(select, options) {
+        select.innerHTML = "";
+        for (const [value, label] of options) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        }
+      }
+
+      function updateDependentOptions() {
+        const cluster = clusterEl.value;
+        const previousPartition = partitionEl.value;
+        const partitions = partitionsByCluster[cluster] || [];
+        setOptions(partitionEl, partitions);
+        if (partitions.some(([value]) => value === previousPartition)) {
+          partitionEl.value = previousPartition;
+        }
+        updatePlanOptions();
+      }
+
+      function updatePlanOptions() {
+        const key = `${clusterEl.value}/${partitionEl.value}`;
+        const plans = plansByClusterPartition[key] || [];
+        setOptions(planEl, plans);
+        planEl.disabled = plans.length === 0;
+      }
+
+      async function getStatus() {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        backendDryRunOnly = data.dryRunOnly;
+        statusEl.textContent = [
+          data.authStateExists ? "已检测到星光登录态" : "未检测到星光登录态",
+          data.dryRunOnly ? "后端当前禁止真实提交" : "后端允许真实提交",
+        ].join(" / ");
+        updateSubmitButton();
+      }
+
+      function updateSubmitButton() {
+        if (submitModeEl.value === "real") {
+          button.textContent = backendDryRunOnly ? "后端未开启真实提交" : "真实提交作业";
+        } else {
+          button.textContent = submitEngineEl.value === "direct" ? "生成 Direct API payload" : "运行 dry-run";
+        }
+      }
+
+      function formatFileSize(size) {
+        if (size < 1024) return `${size}.00 B`;
+        if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KiB`;
+        return `${(size / 1024 / 1024).toFixed(2)} MiB`;
+      }
+
+      function formatDate(date) {
+        const pad = (value) => String(value).padStart(2, "0");
+        return [
+          date.getFullYear(),
+          pad(date.getMonth() + 1),
+          pad(date.getDate()),
+        ].join("-") + " " + [
+          pad(date.getHours()),
+          pad(date.getMinutes()),
+          pad(date.getSeconds()),
+        ].join(":");
+      }
+
+      function renderRemoteFiles() {
+        remoteFileList.innerHTML = "";
+        for (const item of remoteFiles) {
+          const row = document.createElement("tr");
+          row.className = `file-row${highlightedScriptFile === item ? " selected" : ""}`;
+          row.innerHTML = `
+            <td><span class="file-icon">${item.file ? "▤" : "■"}</span>${item.name}</td>
+            <td>${item.owner}</td>
+            <td>${item.permission}</td>
+            <td>${item.type}</td>
+            <td>${item.size}</td>
+            <td>${item.modified}</td>
+          `;
+          row.addEventListener("click", () => {
+            if (!item.file) return;
+            highlightedScriptFile = item;
+            renderRemoteFiles();
+          });
+          remoteFileList.appendChild(row);
+        }
+        remoteTotal.textContent = `Total ${remoteFiles.length}`;
+      }
+
+      function openScriptDialog() {
+        scriptModal.classList.add("open");
+        scriptModal.setAttribute("aria-hidden", "false");
+        renderRemoteFiles();
+      }
+
+      function closeScriptDialog() {
+        scriptModal.classList.remove("open");
+        scriptModal.setAttribute("aria-hidden", "true");
+      }
+
+      function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = String(reader.result || "");
+            resolve(result.includes(",") ? result.split(",").pop() : result);
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function buildPayload() {
+        const body = Object.fromEntries(new FormData(form).entries());
+        delete body.script;
+        if (selectedScriptFile?.file) {
+          const scriptFile = selectedScriptFile.file;
+          body.scriptFile = {
+            name: selectedScriptFile.name,
+            type: scriptFile.type || "application/octet-stream",
+            size: scriptFile.size,
+            contentBase64: await readFileAsBase64(scriptFile),
+          };
+        }
+        return body;
+      }
+
+      form.addEventListener("submit", (event) => event.preventDefault());
+      clusterEl.addEventListener("change", updateDependentOptions);
+      partitionEl.addEventListener("change", updatePlanOptions);
+      submitModeEl.addEventListener("change", updateSubmitButton);
+      submitEngineEl.addEventListener("change", updateSubmitButton);
+      document.querySelector("#open-script-dialog").addEventListener("click", openScriptDialog);
+      scriptEl.addEventListener("click", openScriptDialog);
+      document.querySelector("#close-script-dialog").addEventListener("click", closeScriptDialog);
+      document.querySelector("#cancel-script-dialog").addEventListener("click", closeScriptDialog);
+      document.querySelector("#modal-upload").addEventListener("click", () => modalFileInput.click());
+      modalFileInput.addEventListener("change", () => {
+        const file = modalFileInput.files[0];
+        if (!file) return;
+        const existingIndex = remoteFiles.findIndex((item) => item.name === file.name);
+        const nextItem = {
+          name: file.name,
+          owner: "20881 13440",
+          permission: "-rw-r--r--",
+          type: "文件",
+          size: formatFileSize(file.size),
+          modified: formatDate(new Date()),
+          file,
+        };
+        if (existingIndex >= 0) remoteFiles.splice(existingIndex, 1, nextItem);
+        else remoteFiles.unshift(nextItem);
+        highlightedScriptFile = nextItem;
+        renderRemoteFiles();
+        modalFileInput.value = "";
+      });
+      document.querySelector("#confirm-script-dialog").addEventListener("click", () => {
+        if (!highlightedScriptFile?.file) {
+          closeScriptDialog();
+          return;
+        }
+        selectedScriptFile = highlightedScriptFile;
+        scriptEl.value = selectedScriptFile.name;
+        closeScriptDialog();
+      });
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        output.textContent = submitEngineEl.value === "direct" ? "运行中，后端正在构造/请求星光 API..." : "运行中，后端正在打开星光页面...";
+        try {
+          const body = await buildPayload();
+          const apiPath = body.submitEngine === "direct" ? "/api/direct-submit" : "/api/dry-run";
+          const res = await fetch(apiPath, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          output.innerHTML = "";
+          const text = document.createTextNode(JSON.stringify(data, null, 2));
+          output.appendChild(text);
+          if (data.screenshot) {
+            const link = document.createElement("a");
+            link.href = data.screenshot;
+            link.target = "_blank";
+            link.textContent = "\n\n打开截图";
+            output.appendChild(link);
+          }
+        } catch (error) {
+          output.textContent = String(error);
+        } finally {
+          button.disabled = false;
+          getStatus();
+        }
+      });
+
+      updateDependentOptions();
+      renderRemoteFiles();
+      getStatus();
+    </script>
+  </body>
+</html>

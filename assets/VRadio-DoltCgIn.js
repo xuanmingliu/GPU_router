@@ -1,0 +1,1 @@
+import{V as s,m as r}from"./VSelectionControl-xZjyUQx2.js";import{L as t,Q as n,a as i,R as c,T as l}from"./index-CmwsSpf2.js";const d=l({...r({falseIcon:"$radioOff",trueIcon:"$radioOn"})},"VRadio"),V=t()({name:"VRadio",props:d(),setup(o,e){let{slots:a}=e;return n(()=>i(s,c(o,{class:["v-radio",o.class],style:o.style,type:"radio"}),a)),{}}});export{V};

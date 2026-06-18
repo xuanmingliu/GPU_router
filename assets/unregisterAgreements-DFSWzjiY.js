@@ -1,0 +1,1 @@
+import{U as t}from"./UnregisterAgreementContent-BOOggwIl.js";import{F as r}from"./Footer-8NZzZnwL.js";import{d as o,o as n,c as a,a as e,F as s}from"./index-CmwsSpf2.js";import"./beian-Dxlp8Fln.js";const u=o({__name:"unregisterAgreements",setup(m){return(p,c)=>(n(),a(s,null,[e(t,{class:"pt-8 pb-20"}),e(r)],64))}});export{u as default};

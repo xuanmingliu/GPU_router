@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" id="html">
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="anonymous">
+    <link rel="preload" as="style" onload="this.rel=&#39;stylesheet&#39;" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&amp;display=swap">
+    <link rel="preload" as="font" type="font/eot" href="/assets/fontello-CnWxryRb.eot" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fontello-BJkOxCgW.woff2" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/ttf" href="/assets/FjallaOne-Regular-VhlnZR9t.ttf" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/ttf" href="/assets/Lato-Medium-13-CtrYq4Dl.ttf" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/eot" href="/assets/materialdesignicons-webfont-DttUABo4.eot" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/woff" href="/assets/fontello-BEgLts9b.woff" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/woff2" href="/assets/materialdesignicons-webfont-CYDMK1kx.woff2" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/ttf" href="/assets/fontello-B1X0PDnA.ttf" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/woff" href="/assets/materialdesignicons-webfont-CgCzGbLl.woff" crossorigin="anonymous">
+    <link rel="preload" as="font" type="font/ttf" href="/assets/materialdesignicons-webfont-D3kAzl71.ttf" crossorigin="anonymous">
+
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/logo.svg" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no"
+    />
+
+    <meta name="title" content="智星云|算力租用|AI服务器|GPU云服务器|免费GPU" />
+    <meta
+      name="og:image"
+      content="https://bd.bcebos.com/v1/zhixinyun/web_static_resource/score_store_banner.jpg"
+    />
+    <meta
+      name="keywords"
+      content="免费GPU,算力租用,GPU服务器租用,深度学习服务器,AI,模型训练,AI训练,AI推理,人工智能,模型训练,云服务器,AIGC,英伟达,NVIDIA,RTX4090,H20,A100,H100,H800,V100"
+    />
+    <meta
+      name="description"
+      content="智星云GPU算力平台 训练、推理、渲染和测绘的最佳选择 云算力低投入、省空间、无电费、无宽带费 高速百兆光纤,随时随地访问不受约束零成本浪费，使用弹性GPU部署AIGC、深度学习、云游戏、渲染测绘、元宇宙、HPC等应用。高性价比，快速灵活，让成本100%只用于业务本身，无惧算力空闲压力。
+      "
+    />
+    <title>
+      智星云 AI Galaxy | GPU云服务器 GPU服务器租用 远程GPU租用 深度学习服务器 |
+      免费GPU 便宜GPU
+    </title>
+    <style>
+      .ai-galaxy-open-loader {
+        margin-top: 16px;
+        width: 108px;
+        height: 60px;
+        color: #417aff;
+        --c: radial-gradient(farthest-side, currentColor 96%, #0000);
+        background: var(--c) 100% 100% /30% 60%, var(--c) 70% 0 /50% 100%,
+          var(--c) 0 100% /36% 68%, var(--c) 27% 18% /26% 40%,
+          linear-gradient(currentColor 0 0) bottom/67% 58%;
+        background-repeat: no-repeat;
+        position: relative;
+      }
+      .ai-galaxy-open-loader:after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: inherit;
+        opacity: 0.4;
+        animation: ai-galaxy-open-loader-anim 1s infinite;
+      }
+      @keyframes ai-galaxy-open-loader-anim {
+        to {
+          transform: scale(1.8);
+          opacity: 0;
+        }
+      }
+    </style>
+
+    <script type="module" crossorigin src="/assets/index-CmwsSpf2.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DNYNUUuL.css">
+  </head>
+
+  <body>
+    <h1 style="position: fixed; z-index: -999; opacity: 0">
+      智星云 AI Galaxy | GPU云服务器 GPU服务器租用 远程GPU租用 深度学习服务器 |
+      免费GPU 便宜GPU
+    </h1>
+    <div id="app">
+      <div
+        style="
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          right: 0;
+          left: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        "
+      >
+        <span
+          style="
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333333;
+          "
+          >AI GALAXY丨智星云</span
+        >
+        <div class="ai-galaxy-open-loader"></div>
+      </div>
+    </div>
+  </body>
+</html>
