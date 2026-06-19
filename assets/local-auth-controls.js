@@ -3,7 +3,31 @@
   window.__cxLocalAuthControlsLoaded = true;
 
   function clearLocalAuth() {
-    ["token", "sessionId", "cx_demo_user"].forEach((key) => localStorage.removeItem(key));
+    const exactKeys = [
+      "token",
+      "Token",
+      "session",
+      "sessionId",
+      "user",
+      "userInfo",
+      "userinfo",
+      "cx_demo_user",
+      "cx-last-starlight-job",
+    ];
+    exactKeys.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+    for (const storage of [localStorage, sessionStorage]) {
+      for (let index = storage.length - 1; index >= 0; index -= 1) {
+        const key = storage.key(index) || "";
+        const normalized = key.toLowerCase();
+        if (normalized.includes("token") || normalized.includes("session") || normalized.includes("user")) {
+          storage.removeItem(key);
+        }
+      }
+    }
+    document.cookie = "cx_demo_token=; Path=/; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
   }
 
   async function logout(button) {
@@ -22,7 +46,7 @@
       // Even if the network request fails, clear the browser-side session.
     }
     clearLocalAuth();
-    location.replace("/login");
+    location.replace("/login?logout=1");
     button.textContent = original;
   }
 

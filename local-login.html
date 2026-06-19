@@ -259,6 +259,39 @@
     <script>
       let mode = "login";
 
+      function clearLocalAuth() {
+        const exactKeys = [
+          "token",
+          "Token",
+          "session",
+          "sessionId",
+          "user",
+          "userInfo",
+          "userinfo",
+          "cx_demo_user",
+          "cx-last-starlight-job",
+        ];
+        exactKeys.forEach((key) => {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        });
+        for (const storage of [localStorage, sessionStorage]) {
+          for (let index = storage.length - 1; index >= 0; index -= 1) {
+            const key = storage.key(index) || "";
+            const normalized = key.toLowerCase();
+            if (normalized.includes("token") || normalized.includes("session") || normalized.includes("user")) {
+              storage.removeItem(key);
+            }
+          }
+        }
+        document.cookie = "cx_demo_token=; Path=/; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+
+      const isLogoutLanding = new URLSearchParams(location.search).get("logout") === "1";
+      if (isLogoutLanding) {
+        clearLocalAuth();
+      }
+
       const heading = document.getElementById("heading");
       const modeLink = document.getElementById("modeLink");
       const loginTab = document.getElementById("loginTab");
@@ -391,7 +424,9 @@
         }
       });
 
-      restoreSession();
+      if (!isLogoutLanding) {
+        restoreSession();
+      }
     </script>
   </body>
 </html>
