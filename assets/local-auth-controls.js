@@ -66,6 +66,10 @@
       .cx-hide-account-menu {
         display: none !important;
       }
+      .cx-hide-account-entry {
+        display: none !important;
+        pointer-events: none !important;
+      }
       @media (max-width: 768px) {
         .cx-local-auth-controls {
           top: 10px;
@@ -77,18 +81,30 @@
     document.head.appendChild(style);
   }
 
-  function hideOriginalAccountMenus() {
+  function hideOriginalAccountMenus(account) {
     const markers = ["主账号手机号", "余额", "信用额度", "算力券", "综合可用", "我的租用", "我的卡包", "充值记录", "兑换中心"];
     document.querySelectorAll(".v-overlay-container .v-overlay, .v-overlay-container .v-menu, .v-overlay-container > div, body > .v-overlay-container").forEach((node) => {
       const text = node.innerText || "";
       const hitCount = markers.filter((marker) => text.includes(marker)).length;
       if (hitCount >= 3) node.classList.add("cx-hide-account-menu");
     });
+    if (!account) return;
+    document.querySelectorAll("body button, body a, body [role='button'], body .v-btn, body .v-list-item, body div, body span").forEach((node) => {
+      if (node.closest("#cx-local-auth-controls") || node.closest(".cx-connect-dialog")) return;
+      const text = (node.innerText || node.textContent || "").trim();
+      if (!text || text.length > 80) return;
+      if (!text.includes(account) && !text.includes("13800138000")) return;
+      const rect = node.getBoundingClientRect();
+      if (rect.width > 280 || rect.height > 80) return;
+      if (rect.top > 90 || rect.right < window.innerWidth * 0.45) return;
+      const entry = node.closest("button, a, [role='button'], .v-btn, .v-list-item") || node;
+      entry.classList.add("cx-hide-account-entry");
+    });
   }
 
-  function watchOriginalAccountMenus() {
-    hideOriginalAccountMenus();
-    const observer = new MutationObserver(hideOriginalAccountMenus);
+  function watchOriginalAccountMenus(account) {
+    hideOriginalAccountMenus(account);
+    const observer = new MutationObserver(() => hideOriginalAccountMenus(account));
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
@@ -106,7 +122,7 @@
       return;
     }
     ensureStyle();
-    watchOriginalAccountMenus();
+    watchOriginalAccountMenus(payload.account || "");
     let controls = document.getElementById("cx-local-auth-controls");
     if (!controls) {
       controls = document.createElement("div");
