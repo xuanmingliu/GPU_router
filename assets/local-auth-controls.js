@@ -46,7 +46,7 @@
       // Even if the network request fails, clear the browser-side session.
     }
     clearLocalAuth();
-    window.location.href = "/login?logout=1";
+    window.location.href = "/store?logged_out=1";
     button.textContent = original;
   }
 
@@ -106,6 +106,11 @@
 
   async function render() {
     if (location.pathname === "/login") return;
+    const loggedOutView = new URLSearchParams(location.search).get("logged_out") === "1";
+    if (loggedOutView) {
+      clearLocalAuth();
+      return;
+    }
     let payload = null;
     try {
       const response = await fetch("/local-auth/session", { credentials: "same-origin" });
@@ -115,7 +120,6 @@
     }
     if (!payload || !payload.ok) {
       clearLocalAuth();
-      location.replace("/login");
       return;
     }
     ensureStyle();

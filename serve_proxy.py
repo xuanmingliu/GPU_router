@@ -394,9 +394,11 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             return self.serve_html_file("privacy.html")
         if self.should_proxy_get():
             return self.proxy(cache_asset=True)
-        if path in self.spa_routes or path.startswith("/console/") or path.startswith("/account/"):
+        if path == "/console" or path == "/account" or path.startswith("/console/") or path.startswith("/account/"):
             if not self.require_local_session():
                 return
+            return self.serve_store()
+        if path in self.spa_routes:
             return self.serve_store()
         if path.startswith("/assets/") and path.endswith((".js", ".css")):
             return self.serve_static_no_cache()
@@ -415,9 +417,11 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             return self.serve_html_file("privacy.html", head_only=True)
         if path.startswith("/assets/") and path.endswith((".js", ".css")):
             return self.serve_static_no_cache(head_only=True)
-        if path in self.spa_routes or path.startswith("/console/") or path.startswith("/account/"):
+        if path == "/console" or path == "/account" or path.startswith("/console/") or path.startswith("/account/"):
             if not self.require_local_session():
                 return
+            return self.serve_store(head_only=True)
+        if path in self.spa_routes:
             return self.serve_store(head_only=True)
         return super().do_HEAD()
 

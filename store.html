@@ -71,8 +71,16 @@
 
     <script>
       (function () {
+        const loggedOutView = new URLSearchParams(location.search).get("logged_out") === "1";
+        if (loggedOutView) {
+          ["token", "Token", "session", "sessionId", "user", "userInfo", "userinfo", "cx_demo_user"].forEach(function (key) {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+          });
+          document.cookie = "cx_demo_token=; Path=/; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
         const tokenMatch = document.cookie.match(/(?:^|; )cx_demo_token=([^;]+)/);
-        if (tokenMatch) {
+        if (tokenMatch && !loggedOutView) {
           const token = decodeURIComponent(tokenMatch[1]);
           if (token && !localStorage.getItem("token")) {
             localStorage.setItem("token", token);
@@ -82,6 +90,7 @@
         }
         const localLogin = "/login?local=1";
         function shouldRedirect(url) {
+          if (loggedOutView) return false;
           const next = new URL(url || location.href, location.href);
           return next.pathname === "/login" && next.search !== "?local=1";
         }
