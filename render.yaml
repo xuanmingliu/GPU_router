@@ -1,13 +1,16 @@
 services:
   - type: web
     name: gpu-router-web
-    env: python
+    runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python3 serve_proxy.py
     envVars:
-      - key: STARLIGHT_BACKEND
-        sync: false
+      - key: STARLIGHT_BACKEND_HOSTPORT
+        fromService:
+          name: gpu-router-starlight
+          type: web
+          property: hostport
       - key: DB_BACKEND
         value: json
       - key: PYTHONUNBUFFERED
@@ -15,10 +18,10 @@ services:
 
   - type: web
     name: gpu-router-starlight
-    env: node
+    runtime: node
     plan: free
     rootDir: services/starlight_mini_test
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm run serve
     envVars:
       - key: ALLOW_REAL_SUBMIT
