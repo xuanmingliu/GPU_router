@@ -46,7 +46,7 @@
       // Even if the network request fails, clear the browser-side session.
     }
     clearLocalAuth();
-    location.replace("/login?logout=1");
+    window.location.href = "/login?logout=1";
     button.textContent = original;
   }
 
@@ -57,15 +57,16 @@
     style.textContent = `
       .cx-local-auth-controls {
         position: fixed;
-        top: 16px;
-        right: 24px;
-        z-index: 3000;
+        top: 14px;
+        right: 168px;
+        z-index: 2147483647;
         display: inline-flex;
         align-items: center;
         height: 30px;
         padding: 0;
         background: transparent;
         box-shadow: none;
+        pointer-events: auto;
       }
       .cx-local-auth-account {
         display: none;
@@ -83,6 +84,7 @@
         font-weight: 500;
         text-align: center;
         cursor: pointer;
+        pointer-events: auto;
       }
       .cx-local-auth-logout:hover {
         background: rgba(37, 99, 235, 0.08);
@@ -94,7 +96,7 @@
       @media (max-width: 768px) {
         .cx-local-auth-controls {
           top: 12px;
-          right: 12px;
+          right: 96px;
         }
       }
     `;
@@ -126,6 +128,12 @@
         <button class="cx-local-auth-logout" type="button">退出登录</button>
       `;
       controls.querySelector(".cx-local-auth-logout").addEventListener("click", (event) => logout(event.currentTarget));
+      controls.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const button = controls.querySelector(".cx-local-auth-logout");
+        if (button) logout(button);
+      }, true);
       document.body.appendChild(controls);
     }
     controls.querySelector(".cx-local-auth-account").textContent = "";
