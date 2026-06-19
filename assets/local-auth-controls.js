@@ -2,6 +2,21 @@
   if (window.__cxLocalAuthControlsLoaded) return;
   window.__cxLocalAuthControlsLoaded = true;
 
+  const accountMenuMarkers = [
+    "主账号手机号",
+    "余额",
+    "信用额度",
+    "算力券",
+    "综合可用",
+    "我的租用",
+    "我的卡包",
+    "账号信息",
+    "充值记录",
+    "兑换中心",
+  ];
+
+  let accountMenuObserver = null;
+
   function clearLocalAuth() {
     const exactKeys = [
       "token",
@@ -31,9 +46,11 @@
   }
 
   async function logout(button) {
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = "退出中";
+    const original = button ? button.textContent : "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "退出中";
+    }
     try {
       const stored = JSON.parse(localStorage.getItem("cx_demo_user") || "{}");
       await fetch("/local-auth/logout", {
@@ -47,7 +64,7 @@
     }
     clearLocalAuth();
     window.location.href = "/store?logged_out=1";
-    button.textContent = original;
+    if (button) button.textContent = original;
   }
 
   function ensureStyle() {
@@ -55,57 +72,119 @@
     const style = document.createElement("style");
     style.id = "cx-local-auth-controls-style";
     style.textContent = `
-      .cx-local-auth-controls {
-        position: fixed;
-        top: 13px;
-        right: 168px;
-        z-index: 2147483647;
-        display: inline-flex;
-        align-items: center;
-        height: 32px;
-        padding: 0;
-        background: transparent;
-        box-shadow: none;
-        pointer-events: auto;
+      .cx-local-auth-menu {
+        min-width: 180px;
+        padding: 4px 0;
+        background: #ffffff;
       }
-      .cx-local-auth-account {
-        display: none;
-      }
-      .cx-local-auth-logout {
+      .cx-local-auth-menu-button {
+        width: 100%;
+        min-height: 40px;
         border: 0;
-        min-width: 0;
-        height: 32px;
-        padding: 0 10px;
         border-radius: 0;
+        padding: 0 16px;
         background: transparent;
         color: #333333;
         font: inherit;
         font-size: 14px;
         font-weight: 400;
-        text-align: center;
+        line-height: 40px;
+        text-align: left;
         cursor: pointer;
-        pointer-events: auto;
       }
-      .cx-local-auth-logout:hover {
-        background: transparent;
-        color: #2563eb;
+      .cx-local-auth-menu-button:hover {
+        background: rgba(74, 113, 255, 0.08);
+        color: #4a71ff;
       }
-      .cx-local-auth-logout:disabled {
+      .cx-local-auth-menu-button:disabled {
         color: #94a3b8;
         cursor: default;
-      }
-      @media (max-width: 768px) {
-        .cx-local-auth-controls {
-          top: 12px;
-          right: 96px;
-        }
       }
     `;
     document.head.appendChild(style);
   }
 
+  function normalizedText(element) {
+    return (element.textContent || "").replace(/\s+/g, "");
+  }
+
+  function markerHits(text) {
+    return accountMenuMarkers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
+  }
+
+  function isReasonableMenuBox(element) {
+    if (!element || element === document.body || element === document.documentElement) return false;
+    if (element.id === "app") return false;
+    const rect = element.getBoundingClientRect();
+    if (!rect.width || !rect.height) return true;
+    return rect.width <= 560 && rect.height <= 760;
+  }
+
+  function findAccountMenuRoot() {
+    const selectors = [
+      ".v-overlay__content",
+      ".v-menu .v-overlay__content",
+      ".v-card",
+      ".v-list",
+      "[role='menu']",
+      "[class*='menu']",
+      "[class*='overlay']",
+    ];
+    const candidates = Array.from(document.body.querySelectorAll(selectors.join(",")));
+    return candidates
+      .filter((element) => {
+        const text = normalizedText(element);
+        return markerHits(text) >= 2 && isReasonableMenuBox(element);
+      })
+      .sort((a, b) => {
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+        return aRect.width * aRect.height - bRect.width * bRect.height;
+      })[0] || null;
+  }
+
+  function replaceAccountMenu() {
+    const menu = findAccountMenuRoot();
+    if (!menu || menu.dataset.cxLocalAuthMenu === "1") return;
+    menu.dataset.cxLocalAuthMenu = "1";
+    menu.classList.add("cx-local-auth-menu");
+    menu.innerHTML = "";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cx-local-auth-menu-button";
+    button.textContent = "退出登录";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      logout(button);
+    });
+    menu.appendChild(button);
+  }
+
+  function startAccountMenuObserver() {
+    if (accountMenuObserver) return;
+    ensureStyle();
+    replaceAccountMenu();
+    accountMenuObserver = new MutationObserver(() => {
+      replaceAccountMenu();
+    });
+    accountMenuObserver.observe(document.body, { childList: true, subtree: true });
+    document.addEventListener(
+      "click",
+      () => {
+        window.setTimeout(replaceAccountMenu, 0);
+        window.setTimeout(replaceAccountMenu, 120);
+      },
+      true
+    );
+  }
+
   async function render() {
     if (location.pathname === "/login") return;
+    const legacyControls = document.getElementById("cx-local-auth-controls");
+    if (legacyControls) legacyControls.remove();
+
     const loggedOutView = new URLSearchParams(location.search).get("logged_out") === "1";
     if (loggedOutView) {
       clearLocalAuth();
@@ -122,26 +201,7 @@
       clearLocalAuth();
       return;
     }
-    ensureStyle();
-    let controls = document.getElementById("cx-local-auth-controls");
-    if (!controls) {
-      controls = document.createElement("div");
-      controls.id = "cx-local-auth-controls";
-      controls.className = "cx-local-auth-controls";
-      controls.innerHTML = `
-        <span class="cx-local-auth-account"></span>
-        <button class="cx-local-auth-logout" type="button" aria-label="退出登录">退出</button>
-      `;
-      controls.querySelector(".cx-local-auth-logout").addEventListener("click", (event) => logout(event.currentTarget));
-      controls.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const button = controls.querySelector(".cx-local-auth-logout");
-        if (button) logout(button);
-      }, true);
-      document.body.appendChild(controls);
-    }
-    controls.querySelector(".cx-local-auth-account").textContent = "";
+    startAccountMenuObserver();
   }
 
   if (document.readyState === "loading") {
