@@ -109,9 +109,24 @@
     document.getElementById("cx-local-auth-popover")?.remove();
   }
 
+  function removeNativeAccountMenu() {
+    const markers = ["主账号手机号", "信用额度", "我的租用", "我的卡包", "账号信息", "充值记录", "兑换中心"];
+    const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
+    candidates.forEach((element) => {
+      if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
+      const text = (element.textContent || "").replace(/\s+/g, "");
+      const hits = markers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
+      if (hits >= 2) {
+        const overlay = element.closest(".v-overlay.v-menu") || element;
+        overlay.remove();
+      }
+    });
+  }
+
   function showPopover(anchor) {
     ensureStyle();
     removePopover();
+    removeNativeAccountMenu();
     const rect = anchor.getBoundingClientRect();
     const popover = document.createElement("div");
     popover.id = "cx-local-auth-popover";
@@ -144,22 +159,33 @@
     if (accountClickHandlerAttached) return;
     accountClickHandlerAttached = true;
 
+    const handleAccountEvent = (event) => {
+      const popover = document.getElementById("cx-local-auth-popover");
+      if (popover && popover.contains(event.target)) return;
+
+      const candidate = event.target?.closest?.("a,button,[role='button'],.cursor-pointer");
+      if (!isAccountEntry(candidate)) {
+        if (popover) removePopover();
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      showPopover(candidate);
+      window.setTimeout(removeNativeAccountMenu, 0);
+      window.setTimeout(removeNativeAccountMenu, 100);
+      window.setTimeout(removeNativeAccountMenu, 300);
+    };
+
+    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
+      document.addEventListener(eventName, handleAccountEvent, true);
+    });
+
     document.addEventListener(
-      "click",
+      "keyup",
       (event) => {
-        const popover = document.getElementById("cx-local-auth-popover");
-        if (popover && popover.contains(event.target)) return;
-
-        const candidate = event.target?.closest?.("a,button,[role='button'],.cursor-pointer");
-        if (!isAccountEntry(candidate)) {
-          if (popover) removePopover();
-          return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-        showPopover(candidate);
+        if (event.key === "Escape") removePopover();
       },
       true
     );
