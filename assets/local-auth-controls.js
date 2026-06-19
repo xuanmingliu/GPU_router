@@ -2,20 +2,8 @@
   if (window.__cxLocalAuthControlsLoaded) return;
   window.__cxLocalAuthControlsLoaded = true;
 
-  const accountMenuMarkers = [
-    "主账号手机号",
-    "余额",
-    "信用额度",
-    "算力券",
-    "综合可用",
-    "我的租用",
-    "我的卡包",
-    "账号信息",
-    "充值记录",
-    "兑换中心",
-  ];
-
-  let accountMenuObserver = null;
+  let activeAccount = "";
+  let accountClickHandlerAttached = false;
 
   function clearLocalAuth() {
     const exactKeys = [
@@ -63,8 +51,16 @@
       // Even if the network request fails, clear the browser-side session.
     }
     clearLocalAuth();
-    window.location.href = "/store?logged_out=1";
+    window.history.replaceState(null, "", "/store?logged_out=1");
+    window.location.replace("/store?logged_out=1");
     if (button) button.textContent = original;
+  }
+
+  function startLogout(event, button) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    logout(button);
   }
 
   function ensureStyle() {
@@ -72,14 +68,19 @@
     const style = document.createElement("style");
     style.id = "cx-local-auth-controls-style";
     style.textContent = `
-      .cx-local-auth-menu {
-        min-width: 180px;
-        padding: 4px 0;
+      .cx-local-auth-popover {
+        position: fixed;
+        z-index: 2147483647;
+        min-width: 156px;
+        padding: 6px 0;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        border-radius: 8px;
         background: #ffffff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
       }
       .cx-local-auth-menu-button {
         width: 100%;
-        min-height: 40px;
+        min-height: 38px;
         border: 0;
         border-radius: 0;
         padding: 0 16px;
@@ -88,7 +89,7 @@
         font: inherit;
         font-size: 14px;
         font-weight: 400;
-        line-height: 40px;
+        line-height: 38px;
         text-align: left;
         cursor: pointer;
       }
@@ -104,80 +105,67 @@
     document.head.appendChild(style);
   }
 
-  function normalizedText(element) {
-    return (element.textContent || "").replace(/\s+/g, "");
+  function removePopover() {
+    document.getElementById("cx-local-auth-popover")?.remove();
   }
 
-  function markerHits(text) {
-    return accountMenuMarkers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
-  }
-
-  function isReasonableMenuBox(element) {
-    if (!element || element === document.body || element === document.documentElement) return false;
-    if (element.id === "app") return false;
-    const rect = element.getBoundingClientRect();
-    if (!rect.width || !rect.height) return true;
-    return rect.width <= 560 && rect.height <= 760;
-  }
-
-  function findAccountMenuRoot() {
-    const selectors = [
-      ".v-overlay__content",
-      ".v-menu .v-overlay__content",
-      ".v-card",
-      ".v-list",
-      "[role='menu']",
-      "[class*='menu']",
-      "[class*='overlay']",
-    ];
-    const candidates = Array.from(document.body.querySelectorAll(selectors.join(",")));
-    return candidates
-      .filter((element) => {
-        const text = normalizedText(element);
-        return markerHits(text) >= 2 && isReasonableMenuBox(element);
-      })
-      .sort((a, b) => {
-        const aRect = a.getBoundingClientRect();
-        const bRect = b.getBoundingClientRect();
-        return aRect.width * aRect.height - bRect.width * bRect.height;
-      })[0] || null;
-  }
-
-  function replaceAccountMenu() {
-    const menu = findAccountMenuRoot();
-    if (!menu || menu.dataset.cxLocalAuthMenu === "1") return;
-    menu.dataset.cxLocalAuthMenu = "1";
-    menu.classList.add("cx-local-auth-menu");
-    menu.innerHTML = "";
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "cx-local-auth-menu-button";
-    button.textContent = "退出登录";
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      logout(button);
-    });
-    menu.appendChild(button);
-  }
-
-  function startAccountMenuObserver() {
-    if (accountMenuObserver) return;
+  function showPopover(anchor) {
     ensureStyle();
-    replaceAccountMenu();
-    accountMenuObserver = new MutationObserver(() => {
-      replaceAccountMenu();
+    removePopover();
+    const rect = anchor.getBoundingClientRect();
+    const popover = document.createElement("div");
+    popover.id = "cx-local-auth-popover";
+    popover.className = "cx-local-auth-popover";
+    popover.innerHTML = `<button class="cx-local-auth-menu-button" type="button">退出登录</button>`;
+    const button = popover.querySelector("button");
+    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
+      button.addEventListener(eventName, (event) => startLogout(event, button), true);
     });
-    accountMenuObserver.observe(document.body, { childList: true, subtree: true });
+    document.body.appendChild(popover);
+
+    const popoverRect = popover.getBoundingClientRect();
+    const top = Math.min(rect.bottom + 8, window.innerHeight - popoverRect.height - 8);
+    const left = Math.max(8, Math.min(rect.right - popoverRect.width, window.innerWidth - popoverRect.width - 8));
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+  }
+
+  function isAccountEntry(element) {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.top > 90 || rect.right < window.innerWidth * 0.55) return false;
+    const text = (element.textContent || "").replace(/\s+/g, "");
+    if (activeAccount && text.includes(activeAccount.replace(/\s+/g, ""))) return true;
+    return text.includes("主账号") && /@|1\d{10}/.test(text);
+  }
+
+  function attachAccountClickHandler(account) {
+    activeAccount = account || activeAccount;
+    if (accountClickHandlerAttached) return;
+    accountClickHandlerAttached = true;
+
     document.addEventListener(
       "click",
-      () => {
-        window.setTimeout(replaceAccountMenu, 0);
-        window.setTimeout(replaceAccountMenu, 120);
+      (event) => {
+        const popover = document.getElementById("cx-local-auth-popover");
+        if (popover && popover.contains(event.target)) return;
+
+        const candidate = event.target?.closest?.("a,button,[role='button'],.cursor-pointer");
+        if (!isAccountEntry(candidate)) {
+          if (popover) removePopover();
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        showPopover(candidate);
       },
       true
     );
+
+    window.addEventListener("resize", removePopover);
+    window.addEventListener("scroll", removePopover, true);
   }
 
   async function render() {
@@ -188,6 +176,7 @@
     const loggedOutView = new URLSearchParams(location.search).get("logged_out") === "1";
     if (loggedOutView) {
       clearLocalAuth();
+      removePopover();
       return;
     }
     let payload = null;
@@ -199,9 +188,10 @@
     }
     if (!payload || !payload.ok) {
       clearLocalAuth();
+      removePopover();
       return;
     }
-    startAccountMenuObserver();
+    attachAccountClickHandler(payload.account);
   }
 
   if (document.readyState === "loading") {
