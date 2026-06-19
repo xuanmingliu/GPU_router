@@ -33,19 +33,19 @@
     style.textContent = `
       .cx-local-auth-controls {
         position: fixed;
-        top: 12px;
-        right: 18px;
+        top: 16px;
+        right: 24px;
         z-index: 2100;
         display: inline-flex;
         align-items: center;
-        height: 32px;
-        padding: 0 12px;
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 6px;
-        background: rgba(255, 255, 255, 0.96);
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
-        color: #334155;
-        font-size: 13px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        color: #2563eb;
+        font-size: 14px;
+        font-weight: 500;
         line-height: 1;
       }
       .cx-local-auth-account {
@@ -53,11 +53,17 @@
       }
       .cx-local-auth-logout {
         border: 0;
-        padding: 0;
+        min-width: 72px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 4px;
         background: transparent;
         color: #2563eb;
         font: inherit;
         cursor: pointer;
+      }
+      .cx-local-auth-logout:hover {
+        background: rgba(37, 99, 235, 0.08);
       }
       .cx-local-auth-logout:disabled {
         color: #94a3b8;
@@ -72,8 +78,8 @@
       }
       @media (max-width: 768px) {
         .cx-local-auth-controls {
-          top: 10px;
-          right: 12px;
+          top: 12px;
+          right: 14px;
           max-width: calc(100vw - 24px);
         }
       }
