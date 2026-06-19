@@ -57,12 +57,12 @@
     style.textContent = `
       .cx-local-auth-controls {
         position: fixed;
-        top: 14px;
+        top: 13px;
         right: 168px;
         z-index: 2147483647;
         display: inline-flex;
         align-items: center;
-        height: 30px;
+        height: 32px;
         padding: 0;
         background: transparent;
         box-shadow: none;
@@ -73,21 +73,22 @@
       }
       .cx-local-auth-logout {
         border: 0;
-        min-width: 72px;
-        height: 30px;
-        padding: 0 8px;
-        border-radius: 4px;
+        min-width: 0;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 0;
         background: transparent;
-        color: #2563eb;
+        color: #333333;
         font: inherit;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 400;
         text-align: center;
         cursor: pointer;
         pointer-events: auto;
       }
       .cx-local-auth-logout:hover {
-        background: rgba(37, 99, 235, 0.08);
+        background: transparent;
+        color: #2563eb;
       }
       .cx-local-auth-logout:disabled {
         color: #94a3b8;
@@ -125,7 +126,7 @@
       controls.className = "cx-local-auth-controls";
       controls.innerHTML = `
         <span class="cx-local-auth-account"></span>
-        <button class="cx-local-auth-logout" type="button">退出登录</button>
+        <button class="cx-local-auth-logout" type="button" aria-label="退出登录">退出</button>
       `;
       controls.querySelector(".cx-local-auth-logout").addEventListener("click", (event) => logout(event.currentTarget));
       controls.addEventListener("click", (event) => {
