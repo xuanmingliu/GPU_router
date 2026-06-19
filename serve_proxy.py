@@ -176,8 +176,6 @@ def load_auth_db_postgres():
 
 def save_auth_db_mysql(data):
     data = ensure_auth_shape(data)
-    user_accounts = set(data.get("users", {}).keys())
-    session_tokens = set(data.get("sessions", {}).keys())
     owner_pairs = {
         (account, key)
         for account, keys in data.get("jobsByAccount", {}).items()
@@ -185,13 +183,6 @@ def save_auth_db_mysql(data):
     }
     with mysql_connect() as conn:
         with conn.cursor() as cur:
-            if user_accounts:
-                cur.execute(
-                    f"DELETE FROM users WHERE account NOT IN ({','.join(['%s'] * len(user_accounts))})",
-                    tuple(user_accounts),
-                )
-            else:
-                cur.execute("DELETE FROM users")
             for account, user in data.get("users", {}).items():
                 cur.execute(
                     """
@@ -202,13 +193,6 @@ def save_auth_db_mysql(data):
                     (account, user.get("passwordHash") or ""),
                 )
 
-            if session_tokens:
-                cur.execute(
-                    f"DELETE FROM sessions WHERE token NOT IN ({','.join(['%s'] * len(session_tokens))})",
-                    tuple(session_tokens),
-                )
-            else:
-                cur.execute("DELETE FROM sessions")
             for token, session in data.get("sessions", {}).items():
                 cur.execute(
                     """
@@ -219,15 +203,6 @@ def save_auth_db_mysql(data):
                     (token, session.get("account") or "", int(session.get("createdAt") or 0)),
                 )
 
-            if owner_pairs:
-                flat = [item for pair in owner_pairs for item in pair]
-                placeholders = ",".join(["(%s,%s)"] * len(owner_pairs))
-                cur.execute(
-                    f"DELETE FROM user_job_ownership WHERE (account, job_key) NOT IN ({placeholders})",
-                    tuple(flat),
-                )
-            else:
-                cur.execute("DELETE FROM user_job_ownership")
             for account, key in owner_pairs:
                 cur.execute(
                     """
@@ -241,8 +216,6 @@ def save_auth_db_mysql(data):
 
 def save_auth_db_postgres(data):
     data = ensure_auth_shape(data)
-    user_accounts = set(data.get("users", {}).keys())
-    session_tokens = set(data.get("sessions", {}).keys())
     owner_pairs = {
         (account, key)
         for account, keys in data.get("jobsByAccount", {}).items()
@@ -250,13 +223,6 @@ def save_auth_db_postgres(data):
     }
     with postgres_connect() as conn:
         with conn.cursor() as cur:
-            if user_accounts:
-                cur.execute(
-                    f"DELETE FROM users WHERE account NOT IN ({','.join(['%s'] * len(user_accounts))})",
-                    tuple(user_accounts),
-                )
-            else:
-                cur.execute("DELETE FROM users")
             for account, user in data.get("users", {}).items():
                 cur.execute(
                     """
@@ -269,13 +235,6 @@ def save_auth_db_postgres(data):
                     (account, user.get("passwordHash") or ""),
                 )
 
-            if session_tokens:
-                cur.execute(
-                    f"DELETE FROM sessions WHERE token NOT IN ({','.join(['%s'] * len(session_tokens))})",
-                    tuple(session_tokens),
-                )
-            else:
-                cur.execute("DELETE FROM sessions")
             for token, session in data.get("sessions", {}).items():
                 cur.execute(
                     """
@@ -288,15 +247,6 @@ def save_auth_db_postgres(data):
                     (token, session.get("account") or "", int(session.get("createdAt") or 0)),
                 )
 
-            if owner_pairs:
-                flat = [item for pair in owner_pairs for item in pair]
-                placeholders = ",".join(["(%s,%s)"] * len(owner_pairs))
-                cur.execute(
-                    f"DELETE FROM user_job_ownership WHERE (account, job_key) NOT IN ({placeholders})",
-                    tuple(flat),
-                )
-            else:
-                cur.execute("DELETE FROM user_job_ownership")
             for account, key in owner_pairs:
                 cur.execute(
                     """
@@ -338,6 +288,49 @@ def save_auth_db(data):
     with tmp.open("w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=2)
     tmp.replace(AUTH_DB_PATH)
+
+
+def delete_session_token(token):
+    if not token:
+        return
+    if mysql_enabled():
+        with mysql_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
+            conn.commit()
+        return
+    if postgres_enabled():
+        with postgres_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
+            conn.commit()
+        return
+    db = load_auth_db()
+    db.get("sessions", {}).pop(token, None)
+    save_auth_db(db)
+
+
+def delete_owned_job_key(account, key):
+    if not account or not key:
+        return
+    if mysql_enabled():
+        with mysql_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM user_job_ownership WHERE account = %s AND job_key = %s", (account, key))
+            conn.commit()
+        return
+    if postgres_enabled():
+        with postgres_connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM user_job_ownership WHERE account = %s AND job_key = %s", (account, key))
+            conn.commit()
+        return
+    db = load_auth_db()
+    jobs_by_account = db.setdefault("jobsByAccount", {})
+    keys = set(jobs_by_account.get(account, []))
+    keys.discard(key)
+    jobs_by_account[account] = sorted(keys)
+    save_auth_db(db)
 
 
 def hash_password(password):
@@ -540,12 +533,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
     def remove_owned_job_key(self, account, key):
         if not account or not key:
             return
-        db = load_auth_db()
-        jobs_by_account = db.setdefault("jobsByAccount", {})
-        keys = set(jobs_by_account.get(account, []))
-        keys.discard(key)
-        jobs_by_account[account] = sorted(keys)
-        save_auth_db(db)
+        delete_owned_job_key(account, key)
 
     def claim_legacy_jobs_if_first_user(self, account, jobs):
         if not account:
@@ -602,10 +590,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         payload = self.parse_json_or_form(body)
         if path == "/local-auth/logout":
             token = payload.get("token") or self.cookie_token()
-            db = load_auth_db()
-            if token:
-                db.get("sessions", {}).pop(token, None)
-                save_auth_db(db)
+            delete_session_token(token)
             return self.json_response({"ok": True}, extra_headers={"Set-Cookie": self.clear_cookie_header()})
 
         account = str(payload.get("account") or "").strip().lower()
