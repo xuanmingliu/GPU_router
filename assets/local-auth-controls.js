@@ -56,22 +56,32 @@
     style.id = "cx-local-auth-controls-style";
     style.textContent = `
       .cx-local-auth-controls {
-        display: none !important;
+        position: fixed;
+        top: 16px;
+        right: 24px;
+        z-index: 3000;
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
       }
       .cx-local-auth-account {
         display: none;
       }
       .cx-local-auth-logout {
         border: 0;
-        width: 100%;
-        height: 38px;
-        padding: 0 16px;
+        min-width: 72px;
+        height: 30px;
+        padding: 0 8px;
         border-radius: 4px;
         background: transparent;
         color: #2563eb;
         font: inherit;
         font-size: 14px;
-        text-align: left;
+        font-weight: 500;
+        text-align: center;
         cursor: pointer;
       }
       .cx-local-auth-logout:hover {
@@ -81,36 +91,14 @@
         color: #94a3b8;
         cursor: default;
       }
-      .cx-logout-only-menu {
-        min-width: 128px !important;
-        padding: 6px !important;
+      @media (max-width: 768px) {
+        .cx-local-auth-controls {
+          top: 12px;
+          right: 12px;
+        }
       }
     `;
     document.head.appendChild(style);
-  }
-
-  function replaceOriginalAccountMenus() {
-    const markers = ["主账号手机号", "余额", "信用额度", "算力券", "综合可用", "我的租用", "我的卡包", "充值记录", "兑换中心"];
-    document.querySelectorAll(".v-overlay-container .v-overlay, .v-overlay-container .v-menu, .v-overlay-container > div, body > .v-overlay-container").forEach((node) => {
-      const text = node.innerText || "";
-      const hitCount = markers.filter((marker) => text.includes(marker)).length;
-      if (hitCount < 3 || node.dataset.cxLogoutMenuReady === "1") return;
-      node.dataset.cxLogoutMenuReady = "1";
-      node.classList.add("cx-logout-only-menu");
-      node.innerHTML = "";
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "cx-local-auth-logout";
-      button.textContent = "退出登录";
-      button.addEventListener("click", () => logout(button));
-      node.appendChild(button);
-    });
-  }
-
-  function watchOriginalAccountMenus() {
-    replaceOriginalAccountMenus();
-    const observer = new MutationObserver(replaceOriginalAccountMenus);
-    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   async function render() {
@@ -128,7 +116,6 @@
       return;
     }
     ensureStyle();
-    watchOriginalAccountMenus();
     let controls = document.getElementById("cx-local-auth-controls");
     if (!controls) {
       controls = document.createElement("div");
