@@ -154,6 +154,7 @@
     }
     if (!payload || !payload.ok) {
       clearLocalAuth();
+      location.replace("/login");
       return;
     }
     ensureStyle();

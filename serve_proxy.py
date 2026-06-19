@@ -395,6 +395,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         if self.should_proxy_get():
             return self.proxy(cache_asset=True)
         if path in self.spa_routes or path.startswith("/console/") or path.startswith("/account/"):
+            if not self.require_local_session():
+                return
             return self.serve_store()
         if path.startswith("/assets/") and path.endswith((".js", ".css")):
             return self.serve_static_no_cache()
@@ -414,6 +416,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         if path.startswith("/assets/") and path.endswith((".js", ".css")):
             return self.serve_static_no_cache(head_only=True)
         if path in self.spa_routes or path.startswith("/console/") or path.startswith("/account/"):
+            if not self.require_local_session():
+                return
             return self.serve_store(head_only=True)
         return super().do_HEAD()
 
@@ -462,7 +466,20 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         return f"cx_demo_token={token}; Path=/; SameSite=Lax; Max-Age={max_age}"
 
     def clear_cookie_header(self):
-        return "cx_demo_token=; Path=/; SameSite=Lax; Max-Age=0"
+        return "cx_demo_token=; Path=/; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+
+    def require_local_session(self):
+        session, token = self.session_record()
+        if session:
+            return True
+        self.send_response(302)
+        self.send_header("Location", "/login")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        if token:
+            self.send_header("Set-Cookie", self.clear_cookie_header())
+        self.end_headers()
+        return False
 
     def cookie_token(self):
         header = self.headers.get("Cookie", "")
