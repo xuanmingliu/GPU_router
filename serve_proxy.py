@@ -27,6 +27,8 @@ MYSQL_USER = os.environ.get("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
 MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "chuanxinyun")
 MYSQL_SCHEMA_PATH = ROOT / "database" / "schema.sql"
+POSTGRES_DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+POSTGRES_SCHEMA_PATH = ROOT / "database" / "schema.postgres.sql"
 
 os.chdir(ROOT)
 
@@ -46,6 +48,10 @@ def job_key(job):
 
 def mysql_enabled():
     return DB_BACKEND == "mysql"
+
+
+def postgres_enabled():
+    return DB_BACKEND in {"postgres", "postgresql"}
 
 
 def mysql_connect():
@@ -93,9 +99,58 @@ def init_mysql_schema():
         conn.commit()
 
 
+def postgres_connect():
+    if not POSTGRES_DATABASE_URL:
+        raise RuntimeError("DB_BACKEND=postgres 需要设置 DATABASE_URL")
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except ImportError as exc:
+        raise RuntimeError("DB_BACKEND=postgres 需要先安装 psycopg：pip install psycopg[binary]") from exc
+    return psycopg.connect(POSTGRES_DATABASE_URL, row_factory=dict_row)
+
+
+def init_postgres_schema():
+    if not postgres_enabled():
+        return
+    if not POSTGRES_SCHEMA_PATH.exists():
+        raise RuntimeError(f"PostgreSQL schema 文件不存在：{POSTGRES_SCHEMA_PATH}")
+    with postgres_connect() as conn:
+        with conn.cursor() as cur:
+            for statement in split_sql_statements(POSTGRES_SCHEMA_PATH.read_text(encoding="utf-8")):
+                cur.execute(statement)
+        conn.commit()
+
+
 def load_auth_db_mysql():
     db = ensure_auth_shape({})
     with mysql_connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT account, password_hash, created_at FROM users")
+            for row in cur.fetchall():
+                created = row.get("created_at")
+                db["users"][row["account"]] = {
+                    "account": row["account"],
+                    "passwordHash": row["password_hash"],
+                    "createdAt": created.isoformat() if hasattr(created, "isoformat") else str(created or ""),
+                }
+            cur.execute("SELECT token, account, created_at_unix FROM sessions")
+            for row in cur.fetchall():
+                db["sessions"][row["token"]] = {
+                    "account": row["account"],
+                    "createdAt": int(row.get("created_at_unix") or 0),
+                }
+            cur.execute("SELECT account, job_key FROM user_job_ownership")
+            for row in cur.fetchall():
+                db["jobsByAccount"].setdefault(row["account"], []).append(row["job_key"])
+    for account, keys in db["jobsByAccount"].items():
+        db["jobsByAccount"][account] = sorted(set(keys))
+    return db
+
+
+def load_auth_db_postgres():
+    db = ensure_auth_shape({})
+    with postgres_connect() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT account, password_hash, created_at FROM users")
             for row in cur.fetchall():
@@ -184,9 +239,81 @@ def save_auth_db_mysql(data):
         conn.commit()
 
 
+def save_auth_db_postgres(data):
+    data = ensure_auth_shape(data)
+    user_accounts = set(data.get("users", {}).keys())
+    session_tokens = set(data.get("sessions", {}).keys())
+    owner_pairs = {
+        (account, key)
+        for account, keys in data.get("jobsByAccount", {}).items()
+        for key in keys
+    }
+    with postgres_connect() as conn:
+        with conn.cursor() as cur:
+            if user_accounts:
+                cur.execute(
+                    f"DELETE FROM users WHERE account NOT IN ({','.join(['%s'] * len(user_accounts))})",
+                    tuple(user_accounts),
+                )
+            else:
+                cur.execute("DELETE FROM users")
+            for account, user in data.get("users", {}).items():
+                cur.execute(
+                    """
+                    INSERT INTO users (account, password_hash)
+                    VALUES (%s, %s)
+                    ON CONFLICT (account) DO UPDATE SET
+                      password_hash = EXCLUDED.password_hash,
+                      updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (account, user.get("passwordHash") or ""),
+                )
+
+            if session_tokens:
+                cur.execute(
+                    f"DELETE FROM sessions WHERE token NOT IN ({','.join(['%s'] * len(session_tokens))})",
+                    tuple(session_tokens),
+                )
+            else:
+                cur.execute("DELETE FROM sessions")
+            for token, session in data.get("sessions", {}).items():
+                cur.execute(
+                    """
+                    INSERT INTO sessions (token, account, created_at_unix)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (token) DO UPDATE SET
+                      account = EXCLUDED.account,
+                      created_at_unix = EXCLUDED.created_at_unix
+                    """,
+                    (token, session.get("account") or "", int(session.get("createdAt") or 0)),
+                )
+
+            if owner_pairs:
+                flat = [item for pair in owner_pairs for item in pair]
+                placeholders = ",".join(["(%s,%s)"] * len(owner_pairs))
+                cur.execute(
+                    f"DELETE FROM user_job_ownership WHERE (account, job_key) NOT IN ({placeholders})",
+                    tuple(flat),
+                )
+            else:
+                cur.execute("DELETE FROM user_job_ownership")
+            for account, key in owner_pairs:
+                cur.execute(
+                    """
+                    INSERT INTO user_job_ownership (account, job_key)
+                    VALUES (%s, %s)
+                    ON CONFLICT (account, job_key) DO NOTHING
+                    """,
+                    (account, key),
+                )
+        conn.commit()
+
+
 def load_auth_db():
     if mysql_enabled():
         return load_auth_db_mysql()
+    if postgres_enabled():
+        return load_auth_db_postgres()
     if not AUTH_DB_PATH.exists():
         return ensure_auth_shape({})
     try:
@@ -202,6 +329,9 @@ def load_auth_db():
 def save_auth_db(data):
     if mysql_enabled():
         save_auth_db_mysql(data)
+        return
+    if postgres_enabled():
+        save_auth_db_postgres(data)
         return
     AUTH_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = AUTH_DB_PATH.with_suffix(".tmp")
@@ -855,6 +985,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     init_mysql_schema()
+    init_postgres_schema()
     print(f"Serving static + API/assets proxy on http://0.0.0.0:{PORT}/store")
     print(f"Data backend: {DB_BACKEND}")
     ThreadingHTTPServer(("0.0.0.0", PORT), ProxyStaticHandler).serve_forever()
