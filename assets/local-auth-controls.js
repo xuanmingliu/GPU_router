@@ -33,29 +33,33 @@
     style.textContent = `
       .cx-local-auth-controls {
         position: fixed;
-        top: 16px;
+        top: 48px;
         right: 24px;
         z-index: 2100;
-        display: inline-flex;
+        display: none;
         align-items: center;
-        height: 28px;
-        padding: 0;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        border-radius: 6px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
         color: #2563eb;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         line-height: 1;
+      }
+      .cx-local-auth-controls.cx-open {
+        display: inline-flex;
       }
       .cx-local-auth-account {
         display: none;
       }
       .cx-local-auth-logout {
         border: 0;
-        min-width: 72px;
-        height: 28px;
-        padding: 0 8px;
+        min-width: 64px;
+        height: 30px;
+        padding: 0;
         border-radius: 4px;
         background: transparent;
         color: #2563eb;
@@ -73,18 +77,43 @@
         display: none !important;
       }
       .cx-hide-account-entry {
-        display: none !important;
-        pointer-events: none !important;
+        cursor: pointer;
       }
       @media (max-width: 768px) {
         .cx-local-auth-controls {
-          top: 12px;
+          top: 44px;
           right: 14px;
           max-width: calc(100vw - 24px);
         }
       }
     `;
     document.head.appendChild(style);
+  }
+
+  function closeLogoutMenu() {
+    const controls = document.getElementById("cx-local-auth-controls");
+    if (controls) controls.classList.remove("cx-open");
+  }
+
+  function openLogoutMenuNear(entry) {
+    const controls = document.getElementById("cx-local-auth-controls");
+    if (!controls) return;
+    const rect = entry.getBoundingClientRect();
+    controls.style.top = `${Math.max(rect.bottom + 8, 44)}px`;
+    controls.style.right = `${Math.max(window.innerWidth - rect.right, 14)}px`;
+    controls.classList.add("cx-open");
+  }
+
+  function enhanceOriginalAccountEntry(entry, account) {
+    if (entry.dataset.cxLogoutBound === "1") return;
+    entry.dataset.cxLogoutBound = "1";
+    entry.classList.add("cx-hide-account-entry");
+    entry.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setTimeout(() => hideOriginalAccountMenus(account), 0);
+      openLogoutMenuNear(entry);
+    }, true);
   }
 
   function hideOriginalAccountMenus(account) {
@@ -104,7 +133,7 @@
       if (rect.width > 280 || rect.height > 80) return;
       if (rect.top > 90 || rect.right < window.innerWidth * 0.45) return;
       const entry = node.closest("button, a, [role='button'], .v-btn, .v-list-item") || node;
-      entry.classList.add("cx-hide-account-entry");
+      enhanceOriginalAccountEntry(entry, account);
     });
   }
 
@@ -139,6 +168,11 @@
         <button class="cx-local-auth-logout" type="button">退出登录</button>
       `;
       controls.querySelector(".cx-local-auth-logout").addEventListener("click", (event) => logout(event.currentTarget));
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest("#cx-local-auth-controls") && !event.target.closest(".cx-hide-account-entry")) {
+          closeLogoutMenu();
+        }
+      });
       document.body.appendChild(controls);
     }
     controls.querySelector(".cx-local-auth-account").textContent = "";
