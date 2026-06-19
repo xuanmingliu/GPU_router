@@ -4,6 +4,7 @@
 
   let activeAccount = "";
   let accountClickHandlerAttached = false;
+  let nativeMenuObserver = null;
 
   function clearLocalAuth() {
     const exactKeys = [
@@ -101,6 +102,11 @@
         color: #94a3b8;
         cursor: default;
       }
+      .v-overlay.v-menu:has(.v-card-text span.text-gray_text),
+      .v-overlay.v-menu:has(.v-card-text .grid-cols-5) {
+        display: none !important;
+        pointer-events: none !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -172,15 +178,24 @@
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      showPopover(candidate);
+      if (event.type === "click" || event.type === "pointerdown" || event.type === "mousedown" || event.type === "touchstart") {
+        showPopover(candidate);
+      } else {
+        removeNativeAccountMenu();
+      }
       window.setTimeout(removeNativeAccountMenu, 0);
       window.setTimeout(removeNativeAccountMenu, 100);
       window.setTimeout(removeNativeAccountMenu, 300);
     };
 
-    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
+    ["pointerover", "mouseover", "mouseenter", "pointerenter", "pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
       document.addEventListener(eventName, handleAccountEvent, true);
     });
+
+    if (!nativeMenuObserver) {
+      nativeMenuObserver = new MutationObserver(() => removeNativeAccountMenu());
+      nativeMenuObserver.observe(document.body, { childList: true, subtree: true });
+    }
 
     document.addEventListener(
       "keyup",
