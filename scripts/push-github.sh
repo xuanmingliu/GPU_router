@@ -4,8 +4,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-REMOTE_URL="https://xuanmingliu@github.com/xuanmingliu/GPU_router.git"
+REMOTE_URL="git@github.com:xuanmingliu/GPU_router.git"
 BRANCH="main"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519_xuanmingliu}"
 
 if [ ! -d .git ]; then
   git init
@@ -15,21 +16,15 @@ fi
 git branch -M "$BRANCH"
 git remote add origin "$REMOTE_URL" 2>/dev/null || git remote set-url origin "$REMOTE_URL"
 
-git credential reject <<EOF 2>/dev/null || true
-protocol=https
-host=github.com
-username=Brandon-Liu-Jx
-EOF
-
-git credential reject <<EOF 2>/dev/null || true
-protocol=https
-host=github.com
-username=xuanmingliu
-EOF
-
 echo "Remote:"
 git remote -v
 echo
+
+if [ ! -f "$SSH_KEY" ]; then
+  echo "SSH key not found: $SSH_KEY" >&2
+  echo "Set SSH_KEY=/path/to/key or create ~/.ssh/id_ed25519_xuanmingliu." >&2
+  exit 1
+fi
 
 git add .
 
@@ -44,7 +39,7 @@ fi
 
 echo
 echo "Pushing to GitHub..."
-echo "If prompted for Password, paste your GitHub Personal Access Token."
+echo "Using SSH key: $SSH_KEY"
 echo
 
-GIT_TERMINAL_PROMPT=1 git push -u origin "$BRANCH"
+GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes" git push -u origin "$BRANCH"
