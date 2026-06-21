@@ -5,6 +5,7 @@
   let activeAccount = "";
   let accountClickHandlerAttached = false;
   let nativeMenuObserver = null;
+  let notificationCleanupInstalled = false;
 
   function clearLocalAuth() {
     const exactKeys = [
@@ -107,8 +108,120 @@
         display: none !important;
         pointer-events: none !important;
       }
+      .cx-hide-notification-entry {
+        display: none !important;
+        pointer-events: none !important;
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  function normalizeText(element) {
+    return (element?.textContent || "").replace(/\s+/g, "");
+  }
+
+  function isNotificationElement(element) {
+    if (!element || element === document.body || element === document.documentElement) return false;
+    const text = normalizeText(element);
+    if (text.includes("通知中心") || text.includes("未读消息")) return true;
+    if (text === "消息" || text.includes("我的消息")) return true;
+    const aria = `${element.getAttribute?.("aria-label") || ""} ${element.getAttribute?.("title") || ""}`;
+    if (/通知|未读|消息/.test(aria)) return true;
+    const href = element.getAttribute?.("href") || "";
+    const to = element.getAttribute?.("to") || "";
+    const value = element.getAttribute?.("value") || "";
+    return /\/inform|\/messages|(^|-)messages($|-)/i.test(`${href} ${to} ${value}`);
+  }
+
+  function removeNotificationUi() {
+    const selectors = [
+      ".v-overlay.v-menu",
+      ".v-overlay__content",
+      ".v-list-item",
+      "a",
+      "button",
+      "[role='button']",
+      "[role='menuitem']",
+      "li",
+      "nav .cursor-pointer",
+      "aside .cursor-pointer",
+    ];
+    Array.from(document.body.querySelectorAll(selectors.join(","))).forEach((element) => {
+      if (!isNotificationElement(element)) return;
+      const overlay = element.closest(".v-overlay.v-menu");
+      if (overlay) {
+        overlay.remove();
+        return;
+      }
+      const menuItem = element.closest(".v-list-item, li, a, button, [role='button'], [role='menuitem']") || element;
+      menuItem.classList.add("cx-hide-notification-entry");
+      menuItem.setAttribute("aria-hidden", "true");
+    });
+
+    Array.from(document.body.querySelectorAll(".mdi-bell-outline, .mdi-bell, i, .v-icon")).forEach((icon) => {
+      const text = normalizeText(icon);
+      const className = String(icon.className || "");
+      if (!text.includes("mdi-bell") && !className.includes("mdi-bell")) return;
+      const button = icon.closest("button, [role='button'], .v-btn, a");
+      if (button) {
+        button.classList.add("cx-hide-notification-entry");
+        button.setAttribute("aria-hidden", "true");
+      }
+    });
+  }
+
+  function redirectAwayFromNotificationRoutes() {
+    const target = `${location.pathname}${location.hash || ""}`;
+    if (/\/inform(\/|$)|\/messages(\/|$)|#\/inform|#\/messages/i.test(target)) {
+      history.replaceState(null, "", "/console");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    }
+  }
+
+  function installNotificationCleanup() {
+    if (notificationCleanupInstalled) return;
+    notificationCleanupInstalled = true;
+    ensureStyle();
+
+    const blockNotificationClick = (event) => {
+      const candidate = event.target?.closest?.("a,button,[role='button'],[role='menuitem'],.v-list-item,li");
+      if (!candidate || !isNotificationElement(candidate)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      removeNotificationUi();
+      redirectAwayFromNotificationRoutes();
+    };
+
+    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
+      document.addEventListener(eventName, blockNotificationClick, true);
+    });
+
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    history.pushState = function (state, title, url) {
+      if (url && /\/inform|\/messages/i.test(String(url))) {
+        return originalPushState.call(this, state, title, "/console");
+      }
+      return originalPushState.apply(this, arguments);
+    };
+    history.replaceState = function (state, title, url) {
+      if (url && /\/inform|\/messages/i.test(String(url))) {
+        return originalReplaceState.call(this, state, title, "/console");
+      }
+      return originalReplaceState.apply(this, arguments);
+    };
+
+    const observer = new MutationObserver(() => {
+      removeNotificationUi();
+      redirectAwayFromNotificationRoutes();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener("popstate", redirectAwayFromNotificationRoutes, true);
+    window.addEventListener("hashchange", redirectAwayFromNotificationRoutes, true);
+    removeNotificationUi();
+    redirectAwayFromNotificationRoutes();
   }
 
   function removePopover() {
@@ -210,6 +323,7 @@
   }
 
   async function render() {
+    installNotificationCleanup();
     if (location.pathname === "/login") return;
     const legacyControls = document.getElementById("cx-local-auth-controls");
     if (legacyControls) legacyControls.remove();

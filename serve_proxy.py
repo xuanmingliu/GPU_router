@@ -367,8 +367,12 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             path = urlsplit(self.path).path
         if path.startswith("/starlight-api/") or path.startswith("/starlight-runs/"):
             return self.proxy_starlight()
+        if path == "/inform" or path.startswith("/inform/") or path == "/messages" or path.startswith("/messages/") or path.startswith("/console/messages"):
+            return self.redirect_response("/console")
         if path == "/third-party/api/v1/work-order/unread-flag":
-            return self.json_response({"code": 200, "data": False, "message": "ok"})
+            return self.json_response({"code": 200, "data": {"unread": False}, "message": "ok"})
+        if path.startswith("/api/notifications/"):
+            return self.empty_notification_response(path)
         if path == "/third-party/api/v1/verification/verifications":
             return self.json_response({
                 "code": 200,
@@ -405,6 +409,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             path = urlsplit(self.path).path
         if path == "/login":
             return self.serve_login(head_only=True)
+        if path == "/inform" or path.startswith("/inform/") or path == "/messages" or path.startswith("/messages/") or path.startswith("/console/messages"):
+            return self.redirect_response("/console")
         if path == "/agreements":
             return self.serve_html_file("agreements.html", head_only=True)
         if path == "/privacy":
@@ -429,6 +435,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             body = self.read_body()
             if path == "/api/get_user_info":
                 return self.mock_user_info(body)
+            if path.startswith("/api/notifications/"):
+                return self.empty_notification_response(path)
             if path in {"/api/instance/get_instance_status_count", "/api/get_container_by_token_with_page_v2"}:
                 return self.mock_console_api(path, body)
             if path in {"/api/login", "/api/register", "/api/company_register", "/api/auth/send_verify_code"} or path.startswith("/api/auth/wechat/"):
@@ -460,6 +468,20 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def empty_notification_response(self, path):
+        if path.endswith("/set_read_all"):
+            return self.json_response({"status": 0, "reason": "ok", "data": True})
+        return self.json_response({
+            "status": 0,
+            "reason": "ok",
+            "data": {
+                "data": [],
+                "list": [],
+                "total": 0,
+                "page_count": 0,
+            },
+        })
+
     def make_cookie_header(self, token, max_age=SESSION_MAX_AGE):
         return f"cx_demo_token={token}; Path=/; SameSite=Lax; Max-Age={max_age}"
 
@@ -478,6 +500,13 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             self.send_header("Set-Cookie", self.clear_cookie_header())
         self.end_headers()
         return False
+
+    def redirect_response(self, location):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.end_headers()
 
     def cookie_token(self):
         header = self.headers.get("Cookie", "")
