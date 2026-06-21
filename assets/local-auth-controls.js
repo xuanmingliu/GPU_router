@@ -112,6 +112,15 @@
         display: none !important;
         pointer-events: none !important;
       }
+      a[href*="workOrder"],
+      a[href*="myWorkOrder"],
+      a[href*="selectQuestion"],
+      [title*="工单"],
+      [aria-label*="工单"],
+      [data-cx-remove-support="true"] {
+        display: none !important;
+        pointer-events: none !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -125,13 +134,15 @@
     const text = normalizeText(element);
     if (text.includes("通知中心") || text.includes("未读消息")) return true;
     if (text === "消息" || text.includes("我的消息")) return true;
-    if (text.includes("工单") || text.includes("服务支持")) return true;
     const aria = `${element.getAttribute?.("aria-label") || ""} ${element.getAttribute?.("title") || ""}`;
     if (/通知|未读|消息|工单|服务支持/.test(aria)) return true;
     const href = element.getAttribute?.("href") || "";
     const to = element.getAttribute?.("to") || "";
     const value = element.getAttribute?.("value") || "";
-    return /\/inform|\/messages|\/workOrder|work-order|workOrder|myWorkOrder|selectQuestion|(^|-)messages($|-)/i.test(`${href} ${to} ${value}`);
+    if (/\/inform|\/messages|\/workOrder|work-order|workOrder|myWorkOrder|selectQuestion|(^|-)messages($|-)/i.test(`${href} ${to} ${value}`)) {
+      return true;
+    }
+    return text.length > 0 && text.length <= 40 && (text.includes("工单") || text.includes("服务支持"));
   }
 
   function removeNotificationUi() {
@@ -139,11 +150,19 @@
       ".v-overlay.v-menu",
       ".v-overlay__content",
       ".v-list-item",
+      ".v-btn",
+      ".v-card",
+      ".v-navigation-drawer *",
+      ".v-app-bar *",
       "a",
       "button",
       "[role='button']",
       "[role='menuitem']",
+      "[title]",
+      "[aria-label]",
       "li",
+      "div",
+      "span",
       "nav .cursor-pointer",
       "aside .cursor-pointer",
     ];
@@ -154,7 +173,10 @@
         overlay.remove();
         return;
       }
-      const menuItem = element.closest(".v-list-item, li, a, button, [role='button'], [role='menuitem']") || element;
+      const menuItem =
+        element.closest(".v-list-item, .v-list-group, .v-btn, li, a, button, [role='button'], [role='menuitem'], .cursor-pointer") ||
+        element;
+      menuItem.setAttribute("data-cx-remove-support", "true");
       menuItem.classList.add("cx-hide-notification-entry");
       menuItem.setAttribute("aria-hidden", "true");
     });
