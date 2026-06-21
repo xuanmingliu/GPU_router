@@ -125,12 +125,13 @@
     const text = normalizeText(element);
     if (text.includes("通知中心") || text.includes("未读消息")) return true;
     if (text === "消息" || text.includes("我的消息")) return true;
+    if (text.includes("工单") || text.includes("服务支持")) return true;
     const aria = `${element.getAttribute?.("aria-label") || ""} ${element.getAttribute?.("title") || ""}`;
-    if (/通知|未读|消息/.test(aria)) return true;
+    if (/通知|未读|消息|工单|服务支持/.test(aria)) return true;
     const href = element.getAttribute?.("href") || "";
     const to = element.getAttribute?.("to") || "";
     const value = element.getAttribute?.("value") || "";
-    return /\/inform|\/messages|(^|-)messages($|-)/i.test(`${href} ${to} ${value}`);
+    return /\/inform|\/messages|\/workOrder|work-order|workOrder|myWorkOrder|selectQuestion|(^|-)messages($|-)/i.test(`${href} ${to} ${value}`);
   }
 
   function removeNotificationUi() {
@@ -172,7 +173,7 @@
 
   function redirectAwayFromNotificationRoutes() {
     const target = `${location.pathname}${location.hash || ""}`;
-    if (/\/inform(\/|$)|\/messages(\/|$)|#\/inform|#\/messages/i.test(target)) {
+    if (/\/inform(\/|$)|\/messages(\/|$)|\/workOrder|workOrder|myWorkOrder|selectQuestion|#\/inform|#\/messages|#\/workOrder/i.test(target)) {
       history.replaceState(null, "", "/console");
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
@@ -200,13 +201,13 @@
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
     history.pushState = function (state, title, url) {
-      if (url && /\/inform|\/messages/i.test(String(url))) {
+      if (url && /\/inform|\/messages|\/workOrder|workOrder|myWorkOrder|selectQuestion/i.test(String(url))) {
         return originalPushState.call(this, state, title, "/console");
       }
       return originalPushState.apply(this, arguments);
     };
     history.replaceState = function (state, title, url) {
-      if (url && /\/inform|\/messages/i.test(String(url))) {
+      if (url && /\/inform|\/messages|\/workOrder|workOrder|myWorkOrder|selectQuestion/i.test(String(url))) {
         return originalReplaceState.call(this, state, title, "/console");
       }
       return originalReplaceState.apply(this, arguments);

@@ -367,10 +367,10 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             path = urlsplit(self.path).path
         if path.startswith("/starlight-api/") or path.startswith("/starlight-runs/"):
             return self.proxy_starlight()
-        if path == "/inform" or path.startswith("/inform/") or path == "/messages" or path.startswith("/messages/") or path.startswith("/console/messages"):
+        if self.is_removed_support_route(path):
             return self.redirect_response("/console")
-        if path == "/third-party/api/v1/work-order/unread-flag":
-            return self.json_response({"code": 200, "data": {"unread": False}, "message": "ok"})
+        if path.startswith("/third-party/api/v1/work-order/"):
+            return self.empty_work_order_response(path)
         if path.startswith("/api/notifications/"):
             return self.empty_notification_response(path)
         if path == "/third-party/api/v1/verification/verifications":
@@ -409,7 +409,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             path = urlsplit(self.path).path
         if path == "/login":
             return self.serve_login(head_only=True)
-        if path == "/inform" or path.startswith("/inform/") or path == "/messages" or path.startswith("/messages/") or path.startswith("/console/messages"):
+        if self.is_removed_support_route(path):
             return self.redirect_response("/console")
         if path == "/agreements":
             return self.serve_html_file("agreements.html", head_only=True)
@@ -437,6 +437,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 return self.mock_user_info(body)
             if path.startswith("/api/notifications/"):
                 return self.empty_notification_response(path)
+            if path.startswith("/third-party/api/v1/work-order/"):
+                return self.empty_work_order_response(path)
             if path in {"/api/instance/get_instance_status_count", "/api/get_container_by_token_with_page_v2"}:
                 return self.mock_console_api(path, body)
             if path in {"/api/login", "/api/register", "/api/company_register", "/api/auth/send_verify_code"} or path.startswith("/api/auth/wechat/"):
@@ -481,6 +483,29 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 "page_count": 0,
             },
         })
+
+    def empty_work_order_response(self, path):
+        if path.endswith("/unread-flag"):
+            return self.json_response({"code": 200, "data": {"unread": False}, "message": "ok"})
+        if path.endswith("/categories") or path.endswith("/documents"):
+            return self.json_response({"code": 200, "data": [], "message": "ok"})
+        if path.endswith("/orders"):
+            return self.json_response({"code": 200, "data": {"orders": [], "total": 0}, "message": "ok"})
+        return self.json_response({"code": 200, "data": {}, "message": "ok"})
+
+    def is_removed_support_route(self, path):
+        return (
+            path == "/inform"
+            or path.startswith("/inform/")
+            or path == "/messages"
+            or path.startswith("/messages/")
+            or path.startswith("/console/messages")
+            or path == "/workOrderAgreement"
+            or path.startswith("/workOrder")
+            or path.startswith("/console/workOrder")
+            or path.startswith("/console/myWorkOrder")
+            or path.startswith("/console/selectQuestion")
+        )
 
     def make_cookie_header(self, token, max_age=SESSION_MAX_AGE):
         return f"cx_demo_token={token}; Path=/; SameSite=Lax; Max-Age={max_age}"
