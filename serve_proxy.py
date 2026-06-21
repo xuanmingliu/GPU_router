@@ -29,6 +29,7 @@ MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "chuanxinyun")
 MYSQL_SCHEMA_PATH = ROOT / "database" / "schema.sql"
 POSTGRES_DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 POSTGRES_SCHEMA_PATH = ROOT / "database" / "schema.postgres.sql"
+ENABLE_LEGACY_JOB_CLAIM = os.environ.get("ENABLE_LEGACY_JOB_CLAIM", "").strip().lower() in {"1", "true", "yes"}
 
 os.chdir(ROOT)
 
@@ -507,6 +508,11 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         return {"account": account, "token": token, "user": user}, token
 
     def session_from_body_or_cookie(self, body=None):
+        token = self.cookie_token()
+        if token:
+            session, _ = self.session_record(token)
+            if session:
+                return session
         token = ""
         if body:
             params = parse_qs((body or b"").decode("utf-8", errors="ignore"))
@@ -536,6 +542,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         delete_owned_job_key(account, key)
 
     def claim_legacy_jobs_if_first_user(self, account, jobs):
+        if not ENABLE_LEGACY_JOB_CLAIM:
+            return
         if not account:
             return
         db = load_auth_db()
@@ -667,7 +675,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
 
     def mock_user_info(self, body):
         params = parse_qs((body or b"").decode("utf-8", errors="ignore"))
-        token = (params.get("session") or params.get("token") or [self.cookie_token()])[0]
+        token = self.cookie_token() or (params.get("session") or params.get("token") or [""])[0]
         session, _ = self.session_record(token)
         if not session:
             return self.json_response({"status": 2, "reason": "获取token失败!", "data": ""})
