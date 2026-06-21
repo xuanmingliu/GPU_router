@@ -59,6 +59,25 @@
     return Promise.resolve();
   }
 
+  async function readJsonResponse(response) {
+    const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const sample = text.replace(/\s+/g, " ").slice(0, 160);
+      throw new Error(`接口返回的不是 JSON：HTTP ${response.status}${sample ? `，内容：${sample}` : ""}`);
+    }
+    let payload;
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch (error) {
+      throw new Error(`接口 JSON 解析失败：${error.message}`);
+    }
+    if (!response.ok) {
+      throw new Error(payload.error || payload.reason || payload.message || `HTTP ${response.status}`);
+    }
+    return payload;
+  }
+
   function clearInlineAccess() {
     document.querySelectorAll(".cx-instance-inline-access").forEach((node) => node.remove());
   }
@@ -196,8 +215,8 @@
         credentials: "same-origin",
         body: JSON.stringify({ cluster: job.cluster, jobId: job.jobId }),
       });
-      const payload = await response.json();
-      if (!response.ok || payload.error) throw new Error(payload.error || "删除失败");
+      const payload = await readJsonResponse(response);
+      if (payload.error) throw new Error(payload.error || "删除失败");
       latestJobs = latestJobs.filter((item) => !(item.cluster === job.cluster && item.jobId === job.jobId));
       row.remove();
       normalizePageSizeText();
@@ -301,7 +320,7 @@
     }
     try {
       const response = await fetch("/starlight-api/jobs", { cache: "no-store", credentials: "same-origin" });
-      const payload = await response.json();
+      const payload = await readJsonResponse(response);
       latestJobs = payload.jobs || [];
       renderRows();
     } catch {

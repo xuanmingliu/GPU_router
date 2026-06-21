@@ -270,10 +270,29 @@
     button.textContent = backendDryRunOnly ? "后端未开启提交" : "提交作业";
   }
 
+  async function readJsonResponse(response) {
+    const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const sample = text.replace(/\s+/g, " ").slice(0, 160);
+      throw new Error(`接口返回的不是 JSON：HTTP ${response.status}${sample ? `，内容：${sample}` : ""}`);
+    }
+    let payload;
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch (error) {
+      throw new Error(`接口 JSON 解析失败：${error.message}`);
+    }
+    if (!response.ok) {
+      throw new Error(payload.error || payload.reason || payload.message || `HTTP ${response.status}`);
+    }
+    return payload;
+  }
+
   async function refreshStatus() {
     try {
       const res = await fetch("/starlight-api/status", { cache: "no-store" });
-      const data = await res.json();
+      const data = await readJsonResponse(res);
       backendDryRunOnly = data.dryRunOnly;
       const authText = data.authValid
         ? "后台凭证有效"
@@ -346,7 +365,7 @@
   async function fetchJobStatus(jobRef) {
     const params = new URLSearchParams({ cluster: jobRef.cluster, jobId: jobRef.jobId });
     const res = await fetch(`/starlight-api/job-status?${params.toString()}`, { cache: "no-store" });
-    const data = await res.json();
+    const data = await readJsonResponse(res);
     setLiveStatus(data.summary, {
       cluster: data.cluster,
       jobId: data.jobId,
@@ -658,7 +677,7 @@
           credentials: "same-origin",
           body: JSON.stringify(body),
         });
-        const data = await res.json();
+        const data = await readJsonResponse(res);
         renderResult(data);
         if (data.submitted && data.jobRef) {
           window.sessionStorage.setItem("cx-last-starlight-job", JSON.stringify({

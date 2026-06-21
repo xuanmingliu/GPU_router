@@ -1010,6 +1010,15 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         try:
             with urlopen(req, timeout=120) as resp:
                 data = resp.read()
+                content_type = resp.headers.get("Content-Type", "")
+                if path.startswith("/starlight-api/") and "application/json" not in content_type.lower():
+                    sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
+                    return self.json_response({
+                        "error": "后端接口返回的不是 JSON",
+                        "status": resp.status,
+                        "contentType": content_type,
+                        "sample": sample,
+                    }, status=502)
                 if path == "/starlight-api/direct-submit" and self.command == "POST":
                     try:
                         payload = json.loads(data.decode("utf-8"))
@@ -1039,6 +1048,23 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(data)
         except HTTPError as e:
             data = e.read()
+            if path.startswith("/starlight-api/"):
+                content_type = e.headers.get("Content-Type", "")
+                sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
+                message = sample or getattr(e, "reason", "") or f"HTTP {e.code}"
+                try:
+                    payload = json.loads(data.decode("utf-8"))
+                    if isinstance(payload, dict):
+                        payload.setdefault("error", payload.get("reason") or payload.get("message") or f"HTTP {e.code}")
+                        return self.json_response(payload, status=e.code)
+                except Exception:
+                    pass
+                return self.json_response({
+                    "error": message,
+                    "status": e.code,
+                    "contentType": content_type,
+                    "sample": sample,
+                }, status=e.code)
             self.send_response(e.code)
             for k, v in e.headers.items():
                 if k.lower() in {"connection", "transfer-encoding", "content-encoding"}:
@@ -1048,6 +1074,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
         except URLError as e:
+            if path.startswith("/starlight-api/"):
+                return self.json_response({"error": f"后端接口不可用：{e}"}, status=502)
             self.send_error(502, f"Starlight proxy error: {e}")
 
 
