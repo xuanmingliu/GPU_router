@@ -50,7 +50,7 @@ def download(name: str) -> bool:
     if dest.suffix in {".js", ".css", ".html"}:
         try:
             text = dest.read_text()
-            text = text.replace("智星云", "传薪云")
+            text = text.replace("智星云", "附中云")
             dest.write_text(text)
         except UnicodeDecodeError:
             pass
