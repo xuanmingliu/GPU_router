@@ -2,6 +2,48 @@
   display: none;
 }
 
+body.cx-store-market-only {
+  --cx-brand-green: #1f5b3b;
+  --cx-brand-green-hover: #17442d;
+  --cx-brand-green-soft: #e8f2ec;
+  --cx-brand-green-border: #b8d6c4;
+}
+
+body.cx-store-market-only .text-primary,
+body.cx-store-market-only a.cx-connect-value,
+body.cx-store-market-only .cx-instance-inline-link,
+body.cx-store-market-only .cx-connect-copy,
+body.cx-store-market-only .cx-market-card .text-primary {
+  color: var(--cx-brand-green) !important;
+}
+
+body.cx-store-market-only .bg-primary,
+body.cx-store-market-only .v-btn.bg-primary,
+body.cx-store-market-only .v-btn--variant-flat.text-primary,
+body.cx-store-market-only .cx-primary-btn {
+  background-color: var(--cx-brand-green) !important;
+  color: #ffffff !important;
+}
+
+body.cx-store-market-only .v-btn.bg-primary:hover,
+body.cx-store-market-only .cx-market-rent:hover,
+body.cx-store-market-only .cx-primary-btn:hover {
+  background-color: var(--cx-brand-green-hover) !important;
+}
+
+body.cx-store-market-only .cx-market-card .\!bg-primary {
+  background-color: var(--cx-brand-green-soft) !important;
+}
+
+body.cx-store-market-only .cx-starlight-field input:focus,
+body.cx-store-market-only .cx-starlight-field select:focus,
+body.cx-store-market-only .cx-path-row input:focus,
+body.cx-store-market-only .cx-path-row select:focus,
+body.cx-store-market-only .cx-file-search:focus {
+  border-color: var(--cx-brand-green) !important;
+  outline: none;
+}
+
 body.cx-store-market-only #main-container > :not(.cx-market-section) {
   display: none !important;
 }

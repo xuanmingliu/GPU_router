@@ -52,9 +52,7 @@
       plan: "default:4核/0块/30GiB",
       specs: ["4-64 核 CPU", "30-480 GiB 内存", "无 GPU 调试/编译环境"],
       desc: "适合数据预处理、编译、轻量推理和通用计算任务。",
-      accent: "#2563eb",
-      disabled: true,
-      disabledText: "暂无权限",
+      accent: "#1f5b3b",
     },
     {
       title: "NVIDIA A100 80GB",
