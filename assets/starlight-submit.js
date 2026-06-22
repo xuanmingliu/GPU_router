@@ -517,7 +517,7 @@
       <section class="cx-starlight-panel">
         <header class="cx-starlight-header">
           <div>
-            <h2 class="cx-starlight-title">附中云算力申请</h2>
+            <h2 class="cx-starlight-title">传薪云算力申请</h2>
           </div>
           <button id="cx-close" class="cx-starlight-close" type="button">×</button>
         </header>

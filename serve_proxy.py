@@ -741,9 +741,9 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             "data": {
                 "Id": 900001,
                 "UserId": 900001,
-                "Username": account or f"附中云用户{suffix}",
-                "Name": account or f"附中云用户{suffix}",
-                "Nickname": account or f"附中云用户{suffix}",
+                "Username": account or f"传薪云用户{suffix}",
+                "Name": account or f"传薪云用户{suffix}",
+                "Nickname": account or f"传薪云用户{suffix}",
                 "Phone": account if account.startswith("1") and len(account) == 11 else "13800138000",
                 "Email": account if "@" in account else "demo@chuanxinyun.local",
                 "Money": 0,
@@ -961,7 +961,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                     if dest.suffix in {".js", ".css", ".html"}:
                         try:
                             text = dest.read_text()
-                            text = text.replace("智星云", "附中云")
+                            text = text.replace("智星云", "传薪云")
                             dest.write_text(text)
                             data = dest.read_bytes()
                         except UnicodeDecodeError:
