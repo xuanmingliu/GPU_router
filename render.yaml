@@ -6,6 +6,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python3 serve_proxy.py
     envVars:
+      - key: STARLIGHT_BACKEND
+        value: https://gpu-router-starlight.onrender.com
       - key: STARLIGHT_BACKEND_HOSTPORT
         fromService:
           name: gpu-router-starlight
