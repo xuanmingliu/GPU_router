@@ -14,6 +14,12 @@ const STARLIGHT_ORIGIN = "https://starlight.nscc-gz.cn";
 const AUTH_STATE = path.join(__dirname, "auth", "starlight-state.json");
 const RUNS_DIR = path.join(__dirname, "runs");
 const JOBS_FILE = path.join(RUNS_DIR, "jobs.json");
+const STARLIGHT_USERNAME = process.env.STARLIGHT_USERNAME || "";
+const STARLIGHT_PASSWORD = process.env.STARLIGHT_PASSWORD || "";
+const STARLIGHT_VERIFICATION_CODE = process.env.STARLIGHT_VERIFICATION_CODE || "";
+const AUTH_REFRESH_INTERVAL_MS = Number(process.env.STARLIGHT_AUTH_REFRESH_INTERVAL_MS || 30 * 60 * 1000);
+const AUTH_REFRESH_MIN_AGE_MS = Number(process.env.STARLIGHT_AUTH_REFRESH_MIN_AGE_MS || 5 * 60 * 1000);
+let lastAuthRefreshAt = 0;
 
 const IMAGE_FULL_NAMES = {
   "ngc-pytorch:25.02-py3-sshd-v3": "hub.starlight.nscc-gz.cn/starlight/ngc-pytorch:25.02-py3-sshd-v3",
@@ -43,6 +49,110 @@ async function readStoredCookieHeader() {
   } catch {
     return "";
   }
+}
+
+function hasStarlightCredentials() {
+  return Boolean(STARLIGHT_USERNAME && STARLIGHT_PASSWORD);
+}
+
+function starlightCookie(name, value) {
+  return {
+    name,
+    value,
+    domain: ".starlight.nscc-gz.cn",
+    path: "/",
+    expires: -1,
+    httpOnly: false,
+    secure: true,
+    sameSite: "Lax",
+  };
+}
+
+async function writeStarlightAuthState(token, meta = {}) {
+  if (!token) throw new Error("星光登录接口没有返回 token");
+  await mkdir(path.dirname(AUTH_STATE), { recursive: true });
+  await writeFile(
+    AUTH_STATE,
+    JSON.stringify(
+      {
+        cookies: [
+          starlightCookie("Bihu-Token", token),
+          starlightCookie("_c_WBKFRo", meta.clientCookie || ""),
+        ].filter((cookie) => cookie.value),
+        origins: [
+          {
+            origin: STARLIGHT_ORIGIN,
+            localStorage: [
+              { name: ".nscc-gz.cn", value: token },
+              { name: "Bihu-Token", value: token },
+              { name: "bihu-token", value: token },
+              { name: "token", value: token },
+              { name: "Token", value: token },
+            ],
+          },
+        ],
+        refreshedAt: new Date().toISOString(),
+        refreshedBy: "direct-login-api",
+        userName: STARLIGHT_USERNAME,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+async function refreshStarlightAuth({ force = false } = {}) {
+  if (!hasStarlightCredentials()) {
+    throw new Error("未配置 STARLIGHT_USERNAME / STARLIGHT_PASSWORD，无法自动刷新星光登录态");
+  }
+  const now = Date.now();
+  if (!force && now - lastAuthRefreshAt < AUTH_REFRESH_MIN_AGE_MS && existsSync(AUTH_STATE)) {
+    return { refreshed: false, skipped: "recently refreshed", authStatePath: AUTH_STATE };
+  }
+
+  const response = await fetch(`${STARLIGHT_ORIGIN}/api/keystone/short_term_token/name`, {
+    method: "POST",
+    headers: {
+      accept: "application/json, text/plain, */*",
+      "content-type": "application/json",
+      origin: STARLIGHT_ORIGIN,
+      referer: `${STARLIGHT_ORIGIN}/`,
+    },
+    body: JSON.stringify({
+      username: STARLIGHT_USERNAME,
+      password: STARLIGHT_PASSWORD,
+      verification_code: STARLIGHT_VERIFICATION_CODE,
+      token_type: null,
+      cookie_exp: null,
+      redirect_url: null,
+    }),
+  });
+  const text = await response.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = { raw: text };
+  }
+  const token = body?.spec;
+  if (!response.ok || !token) {
+    throw new Error(`星光登录态刷新失败 HTTP ${response.status}: ${body?.info || body?.message || text.slice(0, 240)}`);
+  }
+  await writeStarlightAuthState(token);
+  lastAuthRefreshAt = now;
+  return {
+    refreshed: true,
+    authStatePath: AUTH_STATE,
+    userName: STARLIGHT_USERNAME,
+    responseCode: body?.code,
+    kind: body?.kind,
+    refreshedAt: new Date().toISOString(),
+  };
+}
+
+function isAuthFailure(response) {
+  const info = String(response?.body?.info || response?.body?.message || response?.body?.error || "");
+  return response?.status === 401 || response?.status === 403 || /登录|登陆|token|认证|未授权|unauthor/i.test(info);
 }
 
 function json(res, status, payload) {
@@ -420,7 +530,11 @@ function buildDirectSubmitPayload(form) {
 }
 
 async function starlightApi(pathname, options = {}) {
-  const cookie = await readStoredCookieHeader();
+  let cookie = await readStoredCookieHeader();
+  if (!cookie && hasStarlightCredentials()) {
+    await refreshStarlightAuth({ force: true });
+    cookie = await readStoredCookieHeader();
+  }
   if (!cookie) throw new Error("没有可用星光 Cookie，请先导入或刷新登录态");
   const headers = {
     accept: "application/json, text/plain, */*",
@@ -443,7 +557,12 @@ async function starlightApi(pathname, options = {}) {
   } catch {
     body = text;
   }
-  return { status: response.status, ok: response.ok, body };
+  const result = { status: response.status, ok: response.ok, body };
+  if (!options.__retriedAfterAuthRefresh && hasStarlightCredentials() && isAuthFailure(result)) {
+    await refreshStarlightAuth({ force: true });
+    return starlightApi(pathname, { ...options, __retriedAfterAuthRefresh: true });
+  }
+  return result;
 }
 
 async function checkStarlightAuth() {
@@ -967,6 +1086,15 @@ const server = createServer(async (req, res) => {
       const result = await deleteJobRecord(form.cluster, form.jobId);
       return json(res, 200, result);
     }
+    if (req.method === "POST" && url.pathname === "/api/auth/refresh") {
+      const result = await refreshStarlightAuth({ force: true });
+      const auth = await checkStarlightAuth();
+      return json(res, 200, {
+        ...result,
+        authValid: auth.valid,
+        authMessage: auth.message,
+      });
+    }
     if (req.method === "GET" && url.pathname === "/api/status") {
       const auth = await checkStarlightAuth();
       return json(res, 200, {
@@ -975,6 +1103,8 @@ const server = createServer(async (req, res) => {
         authValid: auth.valid,
         authMessage: auth.message,
         authStatePath: AUTH_STATE,
+        autoRefreshAvailable: hasStarlightCredentials(),
+        autoRefreshIntervalMs: AUTH_REFRESH_INTERVAL_MS,
         dryRunOnly: process.env.ALLOW_REAL_SUBMIT !== "1",
         directApiAvailable: auth.valid,
       });
@@ -988,4 +1118,14 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Starlight mini test on http://0.0.0.0:${PORT}`);
   console.log(`Target: ${TARGET_URL}`);
+  console.log(`Auto auth refresh: ${hasStarlightCredentials() ? "enabled" : "disabled (set STARLIGHT_USERNAME/STARLIGHT_PASSWORD)"}`);
+  if (hasStarlightCredentials() && AUTH_REFRESH_INTERVAL_MS > 0) {
+    setInterval(() => {
+      refreshStarlightAuth()
+        .then((result) => {
+          if (result.refreshed) console.log(`Refreshed Starlight auth at ${result.refreshedAt}`);
+        })
+        .catch((error) => console.error(`Starlight auth refresh failed: ${String(error?.message || error)}`));
+    }, AUTH_REFRESH_INTERVAL_MS).unref();
+  }
 });

@@ -30,6 +30,12 @@ services:
     envVars:
       - key: ALLOW_REAL_SUBMIT
         value: "1"
+      - key: STARLIGHT_USERNAME
+        value: thzskj_wfeng33_1
+      - key: STARLIGHT_PASSWORD
+        sync: false
+      - key: STARLIGHT_AUTH_REFRESH_INTERVAL_MS
+        value: "1800000"
 
 databases:
   - name: gpu-router-db

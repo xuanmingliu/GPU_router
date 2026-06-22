@@ -6,7 +6,8 @@
   "scripts": {
     "serve": "node server.js",
     "auth": "node scripts/save-auth-state.js",
-    "import-cookies": "node scripts/import-cookies.js"
+    "import-cookies": "node scripts/import-cookies.js",
+    "refresh-auth": "node scripts/refresh-auth.js"
   },
   "dependencies": {
     "playwright": "^1.56.1"
