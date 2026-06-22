@@ -17,7 +17,8 @@ STARLIGHT_BACKEND_HOSTPORT = os.environ.get("STARLIGHT_BACKEND_HOSTPORT", "").st
 STARLIGHT_BACKEND = os.environ.get(
     "STARLIGHT_BACKEND",
     f"http://{STARLIGHT_BACKEND_HOSTPORT}" if STARLIGHT_BACKEND_HOSTPORT else "http://127.0.0.1:8030",
-)
+).rstrip("/")
+STARLIGHT_PUBLIC_BACKEND = os.environ.get("STARLIGHT_PUBLIC_BACKEND", "https://gpu-router-starlight.onrender.com").strip().rstrip("/")
 AUTH_DB_PATH = ROOT / "data" / "local-auth.json"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
 DB_BACKEND = os.environ.get("DB_BACKEND", "json").strip().lower()
@@ -32,6 +33,26 @@ POSTGRES_SCHEMA_PATH = ROOT / "database" / "schema.postgres.sql"
 ENABLE_LEGACY_JOB_CLAIM = os.environ.get("ENABLE_LEGACY_JOB_CLAIM", "").strip().lower() in {"1", "true", "yes"}
 
 os.chdir(ROOT)
+
+
+def starlight_backend_candidates():
+    candidates = [STARLIGHT_BACKEND]
+    if STARLIGHT_BACKEND_HOSTPORT:
+        candidates.append(f"http://{STARLIGHT_BACKEND_HOSTPORT}".rstrip("/"))
+    if STARLIGHT_PUBLIC_BACKEND:
+        candidates.append(STARLIGHT_PUBLIC_BACKEND)
+    unique = []
+    for candidate in candidates:
+        if candidate and candidate not in unique:
+            unique.append(candidate)
+    return unique
+
+
+def retryable_starlight_gateway_error(status, content_type, data):
+    if status not in {502, 503, 504}:
+        return False
+    sample = data.decode("utf-8", errors="ignore").lower()
+    return "text/html" in content_type.lower() or "<title>502" in sample or "render" in sample
 
 
 def ensure_auth_shape(data):
@@ -1000,83 +1021,108 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             target_path = "/runs/" + path.removeprefix("/starlight-runs/")
         else:
             return self.send_error(404, "Unknown starlight path")
-        target = STARLIGHT_BACKEND + target_path + (("?" + query) if query else "")
         headers = {}
         for k, v in self.headers.items():
             if k.lower() in {"host", "connection", "content-length", "accept-encoding"}:
                 continue
             headers[k] = v
-        req = Request(target, data=body, headers=headers, method=self.command)
-        try:
-            with urlopen(req, timeout=120) as resp:
-                data = resp.read()
-                content_type = resp.headers.get("Content-Type", "")
-                if path.startswith("/starlight-api/") and "application/json" not in content_type.lower():
-                    sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
-                    return self.json_response({
-                        "error": "后端接口返回的不是 JSON",
-                        "status": resp.status,
-                        "contentType": content_type,
-                        "sample": sample,
-                    }, status=502)
-                if path == "/starlight-api/direct-submit" and self.command == "POST":
-                    try:
-                        payload = json.loads(data.decode("utf-8"))
-                        session = self.session_from_body_or_cookie(body)
-                        ref = payload.get("jobRef") or {}
-                        key = job_key({"cluster": ref.get("cluster"), "jobId": ref.get("jobId")})
-                        if payload.get("submitted") and session and key:
-                            self.save_owned_job_key(session.get("account"), key)
-                    except Exception:
-                        pass
-                if path == "/starlight-api/jobs/delete" and self.command == "POST":
-                    try:
-                        payload = self.parse_json_or_form(body)
-                        session = self.session_from_body_or_cookie(body)
-                        key = job_key({"cluster": payload.get("cluster"), "jobId": payload.get("jobId")})
-                        if session and key:
-                            self.remove_owned_job_key(session.get("account"), key)
-                    except Exception:
-                        pass
-                self.send_response(resp.status)
-                for k, v in resp.headers.items():
-                    if k.lower() in {"connection", "transfer-encoding", "content-encoding"}:
-                        continue
-                    self.send_header(k, v)
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(data)
-        except HTTPError as e:
-            data = e.read()
-            if path.startswith("/starlight-api/"):
-                content_type = e.headers.get("Content-Type", "")
-                sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
-                message = sample or getattr(e, "reason", "") or f"HTTP {e.code}"
+        backends = starlight_backend_candidates()
+        last_error = None
+        for backend_index, backend in enumerate(backends):
+            target = backend + target_path + (("?" + query) if query else "")
+            for attempt in range(3):
+                req = Request(target, data=body, headers=headers, method=self.command)
                 try:
-                    payload = json.loads(data.decode("utf-8"))
-                    if isinstance(payload, dict):
-                        payload.setdefault("error", payload.get("reason") or payload.get("message") or f"HTTP {e.code}")
-                        return self.json_response(payload, status=e.code)
-                except Exception:
-                    pass
-                return self.json_response({
-                    "error": message,
-                    "status": e.code,
-                    "contentType": content_type,
-                    "sample": sample,
-                }, status=e.code)
-            self.send_response(e.code)
-            for k, v in e.headers.items():
-                if k.lower() in {"connection", "transfer-encoding", "content-encoding"}:
-                    continue
-                self.send_header(k, v)
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(data)
-        except URLError as e:
-            if path.startswith("/starlight-api/"):
-                return self.json_response({"error": f"后端接口不可用：{e}"}, status=502)
-            self.send_error(502, f"Starlight proxy error: {e}")
+                    with urlopen(req, timeout=120) as resp:
+                        data = resp.read()
+                        content_type = resp.headers.get("Content-Type", "")
+                        if path.startswith("/starlight-api/") and "application/json" not in content_type.lower():
+                            sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
+                            if retryable_starlight_gateway_error(resp.status, content_type, data) and attempt < 2:
+                                time.sleep(2 + attempt * 3)
+                                continue
+                            return self.json_response({
+                                "error": "后端接口返回的不是 JSON",
+                                "status": resp.status,
+                                "contentType": content_type,
+                                "sample": sample,
+                            }, status=502)
+                        if path == "/starlight-api/direct-submit" and self.command == "POST":
+                            try:
+                                payload = json.loads(data.decode("utf-8"))
+                                session = self.session_from_body_or_cookie(body)
+                                ref = payload.get("jobRef") or {}
+                                key = job_key({"cluster": ref.get("cluster"), "jobId": ref.get("jobId")})
+                                if payload.get("submitted") and session and key:
+                                    self.save_owned_job_key(session.get("account"), key)
+                            except Exception:
+                                pass
+                        if path == "/starlight-api/jobs/delete" and self.command == "POST":
+                            try:
+                                payload = self.parse_json_or_form(body)
+                                session = self.session_from_body_or_cookie(body)
+                                key = job_key({"cluster": payload.get("cluster"), "jobId": payload.get("jobId")})
+                                if session and key:
+                                    self.remove_owned_job_key(session.get("account"), key)
+                            except Exception:
+                                pass
+                        self.send_response(resp.status)
+                        for k, v in resp.headers.items():
+                            if k.lower() in {"connection", "transfer-encoding", "content-encoding"}:
+                                continue
+                            self.send_header(k, v)
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        self.wfile.write(data)
+                        return
+                except HTTPError as e:
+                    data = e.read()
+                    content_type = e.headers.get("Content-Type", "")
+                    if retryable_starlight_gateway_error(e.code, content_type, data) and (attempt < 2 or backend_index < len(backends) - 1):
+                        last_error = (e, data, content_type)
+                        time.sleep(2 + attempt * 3)
+                        if attempt < 2:
+                            continue
+                        break
+                    if path.startswith("/starlight-api/"):
+                        sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
+                        message = sample or getattr(e, "reason", "") or f"HTTP {e.code}"
+                        try:
+                            payload = json.loads(data.decode("utf-8"))
+                            if isinstance(payload, dict):
+                                payload.setdefault("error", payload.get("reason") or payload.get("message") or f"HTTP {e.code}")
+                                return self.json_response(payload, status=e.code)
+                        except Exception:
+                            pass
+                        return self.json_response({
+                            "error": message,
+                            "status": e.code,
+                            "contentType": content_type,
+                            "sample": sample,
+                        }, status=e.code)
+                    self.send_response(e.code)
+                    for k, v in e.headers.items():
+                        if k.lower() in {"connection", "transfer-encoding", "content-encoding"}:
+                            continue
+                        self.send_header(k, v)
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                except URLError as e:
+                    last_error = e
+                    if attempt < 2 or backend_index < len(backends) - 1:
+                        time.sleep(2 + attempt * 3)
+                        if attempt < 2:
+                            continue
+                        break
+                    if path.startswith("/starlight-api/"):
+                        return self.json_response({"error": f"后端接口不可用：{e}"}, status=502)
+                    self.send_error(502, f"Starlight proxy error: {e}")
+                    return
+        if path.startswith("/starlight-api/"):
+            return self.json_response({"error": f"后端接口不可用：{last_error}"}, status=502)
+        self.send_error(502, f"Starlight proxy error: {last_error}")
 
 
 if __name__ == "__main__":
