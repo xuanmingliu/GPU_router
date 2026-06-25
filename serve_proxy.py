@@ -14,11 +14,11 @@ ROOT = Path(__file__).resolve().parent
 UPSTREAM = "https://gpu.ai-galaxy.cn"
 PORT = int(os.environ.get("PORT", "8010"))
 STARLIGHT_BACKEND_HOSTPORT = os.environ.get("STARLIGHT_BACKEND_HOSTPORT", "").strip()
+STARLIGHT_PUBLIC_BACKEND = os.environ.get("STARLIGHT_PUBLIC_BACKEND", "https://gpu-router-starlight.onrender.com").strip().rstrip("/")
 STARLIGHT_BACKEND = os.environ.get(
     "STARLIGHT_BACKEND",
-    f"http://{STARLIGHT_BACKEND_HOSTPORT}" if STARLIGHT_BACKEND_HOSTPORT else "http://127.0.0.1:8030",
+    STARLIGHT_PUBLIC_BACKEND or "http://127.0.0.1:8030",
 ).rstrip("/")
-STARLIGHT_PUBLIC_BACKEND = os.environ.get("STARLIGHT_PUBLIC_BACKEND", "https://gpu-router-starlight.onrender.com").strip().rstrip("/")
 AUTH_DB_PATH = ROOT / "data" / "local-auth.json"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
 DB_BACKEND = os.environ.get("DB_BACKEND", "json").strip().lower()
@@ -37,10 +37,10 @@ os.chdir(ROOT)
 
 def starlight_backend_candidates():
     candidates = [STARLIGHT_BACKEND]
-    if STARLIGHT_BACKEND_HOSTPORT:
-        candidates.append(f"http://{STARLIGHT_BACKEND_HOSTPORT}".rstrip("/"))
     if STARLIGHT_PUBLIC_BACKEND:
         candidates.append(STARLIGHT_PUBLIC_BACKEND)
+    if os.environ.get("USE_STARLIGHT_HOSTPORT", "").strip().lower() in {"1", "true", "yes"} and STARLIGHT_BACKEND_HOSTPORT:
+        candidates.append(f"http://{STARLIGHT_BACKEND_HOSTPORT}".rstrip("/"))
     unique = []
     for candidate in candidates:
         if candidate and candidate not in unique:

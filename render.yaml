@@ -8,11 +8,6 @@ services:
     envVars:
       - key: STARLIGHT_BACKEND
         value: https://gpu-router-starlight.onrender.com
-      - key: STARLIGHT_BACKEND_HOSTPORT
-        fromService:
-          name: gpu-router-starlight
-          type: web
-          property: hostport
       - key: DB_BACKEND
         value: postgres
       - key: DATABASE_URL
