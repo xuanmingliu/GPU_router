@@ -55,6 +55,9 @@ def retryable_starlight_gateway_error(status, content_type, data):
     return "text/html" in content_type.lower() or "<title>502" in sample or "render" in sample
 
 
+STARLIGHT_RETRY_DELAYS = [2, 5, 10, 15, 20, 30]
+
+
 def ensure_auth_shape(data):
     data.setdefault("users", {})
     data.setdefault("sessions", {})
@@ -1030,7 +1033,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
         last_error = None
         for backend_index, backend in enumerate(backends):
             target = backend + target_path + (("?" + query) if query else "")
-            for attempt in range(3):
+            for attempt in range(len(STARLIGHT_RETRY_DELAYS) + 1):
                 req = Request(target, data=body, headers=headers, method=self.command)
                 try:
                     with urlopen(req, timeout=120) as resp:
@@ -1038,8 +1041,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                         content_type = resp.headers.get("Content-Type", "")
                         if path.startswith("/starlight-api/") and "application/json" not in content_type.lower():
                             sample = data.decode("utf-8", errors="ignore").replace("\n", " ")[:240]
-                            if retryable_starlight_gateway_error(resp.status, content_type, data) and attempt < 2:
-                                time.sleep(2 + attempt * 3)
+                            if retryable_starlight_gateway_error(resp.status, content_type, data) and attempt < len(STARLIGHT_RETRY_DELAYS):
+                                time.sleep(STARLIGHT_RETRY_DELAYS[attempt])
                                 continue
                             return self.json_response({
                                 "error": "后端接口返回的不是 JSON",
@@ -1078,10 +1081,10 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 except HTTPError as e:
                     data = e.read()
                     content_type = e.headers.get("Content-Type", "")
-                    if retryable_starlight_gateway_error(e.code, content_type, data) and (attempt < 2 or backend_index < len(backends) - 1):
+                    if retryable_starlight_gateway_error(e.code, content_type, data) and (attempt < len(STARLIGHT_RETRY_DELAYS) or backend_index < len(backends) - 1):
                         last_error = (e, data, content_type)
-                        time.sleep(2 + attempt * 3)
-                        if attempt < 2:
+                        if attempt < len(STARLIGHT_RETRY_DELAYS):
+                            time.sleep(STARLIGHT_RETRY_DELAYS[attempt])
                             continue
                         break
                     if path.startswith("/starlight-api/"):
@@ -1111,9 +1114,9 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                     return
                 except URLError as e:
                     last_error = e
-                    if attempt < 2 or backend_index < len(backends) - 1:
-                        time.sleep(2 + attempt * 3)
-                        if attempt < 2:
+                    if attempt < len(STARLIGHT_RETRY_DELAYS) or backend_index < len(backends) - 1:
+                        if attempt < len(STARLIGHT_RETRY_DELAYS):
+                            time.sleep(STARLIGHT_RETRY_DELAYS[attempt])
                             continue
                         break
                     if path.startswith("/starlight-api/"):

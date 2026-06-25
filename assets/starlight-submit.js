@@ -30,8 +30,9 @@
 
   let selectedScriptFile = null;
   let highlightedScriptFile = null;
-  let backendDryRunOnly = true;
+  let backendDryRunOnly = false;
   let jobStatusTimer = null;
+  const starlightBackendOrigin = "https://gpu-router-starlight.onrender.com";
   const remoteFiles = [{
     name: "HDD_POOL",
     owner: "-",
@@ -287,10 +288,34 @@
     return payload;
   }
 
+  function shouldTryDirectStarlight(error) {
+    const message = String(error?.message || error || "");
+    return responseLooksUnavailable(message);
+  }
+
+  function responseLooksUnavailable(message) {
+    return /502|503|504|后端接口不可用|不是 JSON|<!DOCTYPE html>|Render|Name or service not known/i.test(message);
+  }
+
+  async function fetchStarlightJson(apiPath, options = {}) {
+    const normalized = apiPath.replace(/^\/+/, "");
+    const sameOriginUrl = `/starlight-api/${normalized}`;
+    const directUrl = `${starlightBackendOrigin}/api/${normalized}`;
+    try {
+      return await readJsonResponse(await fetch(sameOriginUrl, options));
+    } catch (error) {
+      if (!shouldTryDirectStarlight(error)) throw error;
+      return readJsonResponse(await fetch(directUrl, {
+        ...options,
+        mode: "cors",
+        credentials: "omit",
+      }));
+    }
+  }
+
   async function refreshStatus() {
     try {
-      const res = await fetch("/starlight-api/status", { cache: "no-store" });
-      const data = await readJsonResponse(res);
+      const data = await fetchStarlightJson("status", { cache: "no-store" });
       backendDryRunOnly = data.dryRunOnly;
       const authText = data.authValid
         ? "后台凭证有效"
@@ -304,6 +329,8 @@
       updateSubmitButton();
     } catch (error) {
       el("cx-status").textContent = `后端接口不可用：${String(error.message || error)}`;
+      backendDryRunOnly = false;
+      updateSubmitButton();
     }
   }
 
@@ -669,13 +696,12 @@
       el("cx-live-status").classList.add("cx-hidden");
       try {
         const body = await buildPayload();
-        const res = await fetch("/starlight-api/direct-submit", {
+        const data = await fetchStarlightJson("direct-submit", {
           method: "POST",
           headers: { "content-type": "application/json" },
           credentials: "same-origin",
           body: JSON.stringify(body),
         });
-        const data = await readJsonResponse(res);
         renderResult(data);
         if (data.submitted && data.jobRef) {
           window.sessionStorage.setItem("cx-last-starlight-job", JSON.stringify({

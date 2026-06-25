@@ -161,6 +161,9 @@ function json(res, status, payload) {
     "content-type": "application/json; charset=utf-8",
     "content-length": body.length,
     "cache-control": "no-store",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,accept",
   });
   res.end(body);
 }
@@ -1055,6 +1058,15 @@ async function runStarlightDryRun(form) {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET,POST,OPTIONS",
+        "access-control-allow-headers": "content-type,accept",
+        "cache-control": "no-store",
+      });
+      return res.end();
+    }
     if (req.method === "GET" && url.pathname === "/") {
       return serveFile(res, path.join(__dirname, "public", "index.html"), "text/html; charset=utf-8");
     }
