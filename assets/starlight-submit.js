@@ -294,7 +294,7 @@
   }
 
   function responseLooksUnavailable(message) {
-    return /502|503|504|后端接口不可用|不是 JSON|<!DOCTYPE html>|Render|Name or service not known/i.test(message);
+    return /502|503|504|fetch failed|Failed to fetch|NetworkError|后端接口不可用|不是 JSON|<!DOCTYPE html>|Render|Name or service not known/i.test(message);
   }
 
   async function fetchStarlightJson(apiPath, options = {}) {
@@ -317,7 +317,9 @@
     try {
       const data = await fetchStarlightJson("status", { cache: "no-store" });
       backendDryRunOnly = data.dryRunOnly;
-      const authText = data.authValid
+      const authText = data.authCheckFailed
+        ? `后台凭证状态暂未确认：${data.authMessage || "网络临时失败"}`
+        : data.authValid
         ? "后台凭证有效"
         : data.authStateExists
           ? `后台凭证失效：${data.authMessage || "需要刷新"}`

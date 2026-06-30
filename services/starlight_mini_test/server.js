@@ -560,10 +560,21 @@ async function starlightApi(pathname, options = {}) {
   if (options.body && !headers["content-type"]) {
     headers["content-type"] = "application/json";
   }
-  const response = await fetch(`${STARLIGHT_ORIGIN}${pathname}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  let lastError;
+  for (const delay of [0, 1000, 3000, 7000]) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    try {
+      response = await fetch(`${STARLIGHT_ORIGIN}${pathname}`, {
+        ...options,
+        headers,
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!response) throw lastError || new Error("fetch failed");
   const text = await response.text();
   let body;
   try {
@@ -601,8 +612,9 @@ async function checkStarlightAuth() {
   } catch (error) {
     return {
       exists: true,
-      valid: false,
+      valid: null,
       message: String(error?.message || error),
+      checkFailed: true,
       response: null,
     };
   }
@@ -1142,6 +1154,7 @@ const server = createServer(async (req, res) => {
         authStateExists: auth.exists,
         authValid: auth.valid,
         authMessage: auth.message,
+        authCheckFailed: Boolean(auth.checkFailed),
         authStatePath: AUTH_STATE,
         autoRefreshAvailable: hasStarlightCredentials(),
         autoRefreshIntervalMs: AUTH_REFRESH_INTERVAL_MS,
