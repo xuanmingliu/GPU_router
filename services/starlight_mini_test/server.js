@@ -1118,6 +1118,23 @@ const server = createServer(async (req, res) => {
         authMessage: auth.message,
       });
     }
+    if (req.method === "POST" && url.pathname === "/api/auth/import-token") {
+      const form = await readBody(req);
+      const token = String(form.token || form.bihuToken || "").trim();
+      const clientCookie = String(form.clientCookie || "").trim();
+      if (!token) return json(res, 400, { error: "缺少 Bihu-Token" });
+      await writeStarlightAuthState(token, {
+        refreshedBy: "manual-token-import",
+        clientCookie,
+      });
+      const auth = await checkStarlightAuth();
+      return json(res, 200, {
+        imported: true,
+        authValid: auth.valid,
+        authMessage: auth.message,
+        authStatePath: AUTH_STATE,
+      });
+    }
     if (req.method === "GET" && url.pathname === "/api/status") {
       const auth = await checkStarlightAuth();
       return json(res, 200, {
