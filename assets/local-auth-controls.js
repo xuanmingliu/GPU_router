@@ -583,8 +583,6 @@
       return;
     }
     activeBalance = payload.balance || "0.00";
-    attachAccountClickHandler(payload.account);
-    removeNativeBalanceBlocksInMenus();
   }
 
   if (document.readyState === "loading") {
