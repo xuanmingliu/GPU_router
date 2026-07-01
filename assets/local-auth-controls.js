@@ -450,6 +450,20 @@
     location.href = "/console/recharge";
   }
 
+  function removeNativeBalanceBlocks(root) {
+    const nodes = Array.from(root.querySelectorAll("div, section, article, .v-card-text, .v-list-item, .grid, [class*='grid']"));
+    nodes
+      .filter((node) => {
+        const text = (node.textContent || "").replace(/\s+/g, "");
+        return text.includes("账户余额") && text.includes("综合可用");
+      })
+      .sort((a, b) => (a.textContent || "").length - (b.textContent || "").length)
+      .slice(0, 3)
+      .forEach((node) => {
+        node.remove();
+      });
+  }
+
   function removeNativeAccountMenu() {
     const markers = [
       "主账号手机号",
@@ -466,6 +480,7 @@
     const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
     candidates.forEach((element) => {
       if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
+      removeNativeBalanceBlocks(element);
       const text = (element.textContent || "").replace(/\s+/g, "");
       const hits = markers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
       if (hits >= 4) {
