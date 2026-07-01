@@ -76,11 +76,12 @@ CREATE INDEX IF NOT EXISTS idx_balance_ledger_account ON balance_ledger(account)
 CREATE INDEX IF NOT EXISTS idx_balance_ledger_business ON balance_ledger(business_type, business_id);
 
 CREATE TABLE IF NOT EXISTS recharge_code_redemptions (
-  code_hash CHAR(64) PRIMARY KEY,
+  code_hash CHAR(64) NOT NULL,
   code_id VARCHAR(64) NOT NULL,
   account VARCHAR(255) NOT NULL REFERENCES users(account) ON DELETE CASCADE ON UPDATE CASCADE,
   amount_cents BIGINT NOT NULL,
-  redeemed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  redeemed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (account, code_hash)
 );
 
 CREATE INDEX IF NOT EXISTS idx_recharge_code_redemptions_account ON recharge_code_redemptions(account);

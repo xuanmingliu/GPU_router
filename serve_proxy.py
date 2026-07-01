@@ -416,10 +416,13 @@ def redeem_recharge_code(account, code):
         with mysql_connect() as conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT account FROM recharge_code_redemptions WHERE code_hash = %s", (code_hash,))
+                    cur.execute(
+                        "SELECT account FROM recharge_code_redemptions WHERE account = %s AND code_hash = %s",
+                        (account, code_hash),
+                    )
                     if cur.fetchone():
                         conn.rollback()
-                        return False, {"reason": "该充值码已被使用"}
+                        return False, {"reason": "该账号已使用过这个充值码"}
                     cur.execute("SELECT balance_cents FROM users WHERE account = %s FOR UPDATE", (account,))
                     row = cur.fetchone()
                     if not row:
@@ -452,10 +455,13 @@ def redeem_recharge_code(account, code):
         with postgres_connect() as conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT account FROM recharge_code_redemptions WHERE code_hash = %s", (code_hash,))
+                    cur.execute(
+                        "SELECT account FROM recharge_code_redemptions WHERE account = %s AND code_hash = %s",
+                        (account, code_hash),
+                    )
                     if cur.fetchone():
                         conn.rollback()
-                        return False, {"reason": "该充值码已被使用"}
+                        return False, {"reason": "该账号已使用过这个充值码"}
                     cur.execute("SELECT balance_cents FROM users WHERE account = %s FOR UPDATE", (account,))
                     row = cur.fetchone()
                     if not row:
@@ -486,8 +492,10 @@ def redeem_recharge_code(account, code):
 
     db = load_auth_db()
     used_codes = db.setdefault("usedRechargeCodes", {})
-    if code_hash in used_codes:
-        return False, {"reason": "该充值码已被使用"}
+    account_code_key = f"{account}:{code_hash}"
+    legacy_use = used_codes.get(code_hash)
+    if account_code_key in used_codes or (isinstance(legacy_use, dict) and legacy_use.get("account") == account):
+        return False, {"reason": "该账号已使用过这个充值码"}
     users = db.setdefault("users", {})
     user = users.get(account)
     if not user:
@@ -495,9 +503,10 @@ def redeem_recharge_code(account, code):
     balance = int(user.get("balanceCents") or 0) + amount
     user["balanceCents"] = balance
     user.setdefault("frozenCents", 0)
-    used_codes[code_hash] = {
+    used_codes[account_code_key] = {
         "codeId": code_id,
         "account": account,
+        "codeHash": code_hash,
         "amountCents": amount,
         "redeemedAt": now_iso,
     }

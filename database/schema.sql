@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS recharge_code_redemptions (
   account VARCHAR(255) NOT NULL,
   amount_cents BIGINT NOT NULL,
   redeemed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (code_hash),
+  PRIMARY KEY (account, code_hash),
   KEY idx_recharge_code_redemptions_account (account),
   CONSTRAINT fk_recharge_code_redemptions_account
     FOREIGN KEY (account) REFERENCES users(account)
