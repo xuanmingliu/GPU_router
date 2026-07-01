@@ -451,17 +451,28 @@
   }
 
   function removeNativeBalanceBlocks(root) {
-    const nodes = Array.from(root.querySelectorAll("div, section, article, .v-card-text, .v-list-item, .grid, [class*='grid']"));
-    nodes
+    const removeTargets = new Set();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const text = (walker.currentNode.nodeValue || "").replace(/\s+/g, "");
+      if (!text.includes("账户余额") && !text.includes("综合可用")) continue;
+      let node = walker.currentNode.parentElement;
+      let best = node;
+      while (node && node !== root) {
+        const nodeText = (node.textContent || "").replace(/\s+/g, "");
+        if (nodeText.includes("账户余额") || nodeText.includes("综合可用")) best = node;
+        if (nodeText.includes("充值") || nodeText.includes("退出登录") || nodeText.length > 80) break;
+        node = node.parentElement;
+      }
+      if (best) removeTargets.add(best);
+    }
+    Array.from(root.querySelectorAll("div, section, article, .v-card-text, .v-list-item, .grid, [class*='grid']"))
       .filter((node) => {
         const text = (node.textContent || "").replace(/\s+/g, "");
-        return text.includes("账户余额") && text.includes("综合可用");
+        return text.includes("账户余额") && text.includes("综合可用") && !text.includes("充值") && text.length <= 120;
       })
-      .sort((a, b) => (a.textContent || "").length - (b.textContent || "").length)
-      .slice(0, 3)
-      .forEach((node) => {
-        node.remove();
-      });
+      .forEach((node) => removeTargets.add(node));
+    removeTargets.forEach((node) => node.remove());
   }
 
   function removeNativeAccountMenu() {
