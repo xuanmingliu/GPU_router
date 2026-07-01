@@ -447,15 +447,7 @@
   }
 
   function openRechargeDialog() {
-    removePopover();
-    const dialog = ensureRechargeDialog();
-    const input = dialog.querySelector(".cx-recharge-input");
-    const message = dialog.querySelector(".cx-recharge-message");
-    input.value = "";
-    message.textContent = "充值码兑换后将直接增加到账户余额。";
-    message.classList.remove("cx-error", "cx-success");
-    dialog.classList.add("cx-open");
-    setTimeout(() => input.focus(), 0);
+    location.href = "/console/recharge";
   }
 
   function removeNativeAccountMenu() {
@@ -476,7 +468,7 @@
       if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
       const text = (element.textContent || "").replace(/\s+/g, "");
       const hits = markers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
-      if (hits >= 2 || (text.includes("账户余额") && text.includes("综合可用"))) {
+      if (hits >= 4) {
         const overlay = element.closest(".v-overlay.v-menu") || element;
         overlay.remove();
       }
