@@ -487,17 +487,13 @@
     `;
     const rechargeButton = popover.querySelector('[data-action="recharge"]');
     const logoutButton = popover.querySelector('[data-action="logout"]');
-    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
-      rechargeButton.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation?.();
-        openRechargeDialog();
-      }, true);
-    });
-    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
-      logoutButton.addEventListener(eventName, (event) => startLogout(event, logoutButton), true);
-    });
+    rechargeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      openRechargeDialog();
+    }, true);
+    logoutButton.addEventListener("click", (event) => startLogout(event, logoutButton), true);
     document.body.appendChild(popover);
 
     const popoverRect = popover.getBoundingClientRect();
@@ -534,19 +530,14 @@
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      if (event.type === "click" || event.type === "pointerdown" || event.type === "mousedown" || event.type === "touchstart") {
-        showPopover(candidate);
-      } else {
-        removeNativeAccountMenu();
-      }
+      if (popover) return;
+      showPopover(candidate);
       window.setTimeout(removeNativeAccountMenu, 0);
       window.setTimeout(removeNativeAccountMenu, 100);
       window.setTimeout(removeNativeAccountMenu, 300);
     };
 
-    ["pointerover", "mouseover", "mouseenter", "pointerenter", "pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
-      document.addEventListener(eventName, handleAccountEvent, true);
-    });
+    document.addEventListener("click", handleAccountEvent, true);
 
     if (!nativeMenuObserver) {
       nativeMenuObserver = new MutationObserver(() => removeNativeAccountMenu());
