@@ -16,3 +16,5 @@ services/starlight_mini_test/runs/*.png
 services/starlight_mini_test/runs/*-direct.json
 services/starlight_mini_test/runs/*.json
 !services/starlight_mini_test/runs/jobs.json
+
+ScreenShot_*.png
