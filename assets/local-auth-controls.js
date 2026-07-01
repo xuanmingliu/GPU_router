@@ -491,30 +491,7 @@
   }
 
   function removeNativeAccountMenu() {
-    const markers = [
-      "主账号手机号",
-      "信用额度",
-      "我的租用",
-      "我的卡包",
-      "账号信息",
-      "充值记录",
-      "兑换中心",
-      "账户余额",
-      "综合可用",
-      "算力券",
-    ];
-    const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
     removeNativeBalanceBlocksInMenus();
-    candidates.forEach((element) => {
-      if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
-      removeNativeBalanceBlocks(element);
-      const text = (element.textContent || "").replace(/\s+/g, "");
-      const hits = markers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
-      if (hits >= 4) {
-        const overlay = element.closest(".v-overlay.v-menu") || element;
-        overlay.remove();
-      }
-    });
   }
 
   function showPopover(anchor) {
@@ -561,28 +538,6 @@
     activeAccount = account || activeAccount;
     if (accountClickHandlerAttached) return;
     accountClickHandlerAttached = true;
-
-    const handleAccountEvent = (event) => {
-      const popover = document.getElementById("cx-local-auth-popover");
-      if (popover && popover.contains(event.target)) return;
-
-      const candidate = event.target?.closest?.("a,button,[role='button'],.cursor-pointer");
-      if (!isAccountEntry(candidate)) {
-        if (popover) removePopover();
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      if (popover) return;
-      showPopover(candidate);
-      window.setTimeout(removeNativeAccountMenu, 0);
-      window.setTimeout(removeNativeAccountMenu, 100);
-      window.setTimeout(removeNativeAccountMenu, 300);
-    };
-
-    document.addEventListener("click", handleAccountEvent, true);
 
     if (!nativeMenuObserver) {
       nativeMenuObserver = new MutationObserver(() => {
