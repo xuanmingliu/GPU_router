@@ -451,28 +451,41 @@
   }
 
   function removeNativeBalanceBlocks(root) {
+    if (!root || root.nodeType !== Node.ELEMENT_NODE) return;
     const removeTargets = new Set();
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const text = (walker.currentNode.nodeValue || "").replace(/\s+/g, "");
       if (!text.includes("账户余额") && !text.includes("综合可用")) continue;
       let node = walker.currentNode.parentElement;
+      if (!node || node.closest("#cx-local-auth-popover, #cx-recharge-dialog, .cx-recharge-code-section")) continue;
       let best = node;
-      while (node && node !== root) {
+      while (node && node !== root && node !== document.body && node !== document.documentElement) {
         const nodeText = (node.textContent || "").replace(/\s+/g, "");
-        if (nodeText.includes("账户余额") || nodeText.includes("综合可用")) best = node;
-        if (nodeText.includes("充值") || nodeText.includes("退出登录") || nodeText.length > 80) break;
+        const hasBalanceLabel = nodeText.includes("账户余额") || nodeText.includes("综合可用");
+        const looksLikeBalanceRow = hasBalanceLabel && /￥?\d+(?:\.\d{1,2})?/.test(nodeText);
+        if (looksLikeBalanceRow || (hasBalanceLabel && nodeText.length <= 80)) best = node;
+        if (nodeText.includes("充值余额") || nodeText.includes("请输入充值码") || nodeText.includes("退出登录") || nodeText.length > 180) break;
         node = node.parentElement;
       }
       if (best) removeTargets.add(best);
     }
-    Array.from(root.querySelectorAll("div, section, article, .v-card-text, .v-list-item, .grid, [class*='grid']"))
+    Array.from(root.querySelectorAll("div, section, article, li, .v-card-text, .v-list-item, .grid, [class*='grid'], [class*='flex']"))
       .filter((node) => {
+        if (node.closest("#cx-local-auth-popover, #cx-recharge-dialog, .cx-recharge-code-section")) return false;
         const text = (node.textContent || "").replace(/\s+/g, "");
-        return text.includes("账户余额") && text.includes("综合可用") && !text.includes("充值") && text.length <= 120;
+        if (text.includes("充值余额") || text.includes("请输入充值码")) return false;
+        const hasBalanceLabels = text.includes("账户余额") || text.includes("综合可用");
+        const hasMoney = /￥?\d+(?:\.\d{1,2})?/.test(text);
+        return hasBalanceLabels && hasMoney && text.length <= 180;
       })
       .forEach((node) => removeTargets.add(node));
     removeTargets.forEach((node) => node.remove());
+  }
+
+  function removeNativeBalanceBlocksEverywhere() {
+    if (!document.body) return;
+    removeNativeBalanceBlocks(document.body);
   }
 
   function removeNativeAccountMenu() {
@@ -489,6 +502,7 @@
       "算力券",
     ];
     const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
+    removeNativeBalanceBlocksEverywhere();
     candidates.forEach((element) => {
       if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
       removeNativeBalanceBlocks(element);
@@ -569,7 +583,10 @@
     document.addEventListener("click", handleAccountEvent, true);
 
     if (!nativeMenuObserver) {
-      nativeMenuObserver = new MutationObserver(() => removeNativeAccountMenu());
+      nativeMenuObserver = new MutationObserver(() => {
+        removeNativeBalanceBlocksEverywhere();
+        removeNativeAccountMenu();
+      });
       nativeMenuObserver.observe(document.body, { childList: true, subtree: true });
     }
 
@@ -587,6 +604,7 @@
 
   async function render() {
     installNotificationCleanup();
+    removeNativeBalanceBlocksEverywhere();
     if (location.pathname === "/login") return;
     const legacyControls = document.getElementById("cx-local-auth-controls");
     if (legacyControls) legacyControls.remove();
@@ -611,6 +629,7 @@
     }
     activeBalance = payload.balance || "0.00";
     attachAccountClickHandler(payload.account);
+    removeNativeBalanceBlocksEverywhere();
   }
 
   if (document.readyState === "loading") {
