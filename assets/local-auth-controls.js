@@ -470,7 +470,7 @@
       }
       if (best) removeTargets.add(best);
     }
-    Array.from(root.querySelectorAll("div, section, article, li, .v-card-text, .v-list-item, .grid, [class*='grid'], [class*='flex']"))
+    Array.from(root.querySelectorAll("div, li, .v-card-text, .v-list-item, .grid, [class*='grid']"))
       .filter((node) => {
         if (node.closest("#cx-local-auth-popover, #cx-recharge-dialog, .cx-recharge-code-section")) return false;
         const text = (node.textContent || "").replace(/\s+/g, "");
@@ -483,9 +483,11 @@
     removeTargets.forEach((node) => node.remove());
   }
 
-  function removeNativeBalanceBlocksEverywhere() {
+  function removeNativeBalanceBlocksInMenus() {
     if (!document.body) return;
-    removeNativeBalanceBlocks(document.body);
+    Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list")).forEach((element) => {
+      removeNativeBalanceBlocks(element);
+    });
   }
 
   function removeNativeAccountMenu() {
@@ -502,7 +504,7 @@
       "算力券",
     ];
     const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
-    removeNativeBalanceBlocksEverywhere();
+    removeNativeBalanceBlocksInMenus();
     candidates.forEach((element) => {
       if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
       removeNativeBalanceBlocks(element);
@@ -584,7 +586,6 @@
 
     if (!nativeMenuObserver) {
       nativeMenuObserver = new MutationObserver(() => {
-        removeNativeBalanceBlocksEverywhere();
         removeNativeAccountMenu();
       });
       nativeMenuObserver.observe(document.body, { childList: true, subtree: true });
@@ -604,7 +605,6 @@
 
   async function render() {
     installNotificationCleanup();
-    removeNativeBalanceBlocksEverywhere();
     if (location.pathname === "/login") return;
     const legacyControls = document.getElementById("cx-local-auth-controls");
     if (legacyControls) legacyControls.remove();
@@ -629,7 +629,7 @@
     }
     activeBalance = payload.balance || "0.00";
     attachAccountClickHandler(payload.account);
-    removeNativeBalanceBlocksEverywhere();
+    removeNativeBalanceBlocksInMenus();
   }
 
   if (document.readyState === "loading") {
