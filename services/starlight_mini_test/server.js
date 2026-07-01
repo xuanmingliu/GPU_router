@@ -262,6 +262,36 @@ async function deleteJobRecord(cluster, jobId) {
   return { deleted: next.length !== records.length, total: next.length };
 }
 
+function toUnixMs(value) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function runtimeInfoFromJob(record = {}, upstream = null, summary = null, now = new Date()) {
+  const startedAt =
+    upstream?.startedAt ||
+    upstream?.createdAt ||
+    record.startedAt ||
+    record.createdAt ||
+    "";
+  const endedAt =
+    upstream?.endAt ||
+    record.endedAt ||
+    (summary?.done ? now.toISOString() : "");
+  const startMs = toUnixMs(startedAt);
+  const endMs = summary?.done ? toUnixMs(endedAt) || now.getTime() : now.getTime();
+  const elapsedSeconds = startMs ? Math.max(0, Math.floor((endMs - startMs) / 1000)) : 0;
+  return {
+    startedAt,
+    endedAt,
+    elapsedSeconds,
+    billingUnit: "hour",
+    billingNote: "当前为运行计时展示，暂未接入自动扣费。",
+    upstreamJobFee: upstream?.jobFee ?? record.upstream?.jobFee ?? null,
+  };
+}
+
 async function fillTextByLabel(page, label, value) {
   if (!value) return { label, value, ok: false, reason: "empty value skipped" };
   return page.evaluate(
@@ -792,11 +822,30 @@ async function getStarlightJobStatus(cluster, jobId) {
   const response = await starlightApi(`/api/job/running/${encodeURIComponent(cluster)}/${encodeURIComponent(jobId)}`, {
     method: "GET",
   });
+  const spec = response.body?.spec;
+  const summary = summarizeJobStatus(response.body);
+  const upstream = spec
+    ? {
+        status: spec.status,
+        createdAt: spec.created_at,
+        updatedAt: spec.updated_at,
+        startedAt: spec.started_at,
+        endAt: spec.end_at,
+        nodeName: spec.node_name,
+        ip: spec.ip,
+        jobFee: spec.job_fee,
+        proxies: spec.proxies || [],
+      }
+    : null;
+  const records = await readJobRecords();
+  const record = records.find((job) => job.cluster === cluster && job.jobId === jobId) || {};
   return {
     cluster,
     jobId,
     response,
-    summary: summarizeJobStatus(response.body),
+    summary,
+    upstream,
+    runtime: runtimeInfoFromJob(record, upstream, summary),
     checkedAt: new Date().toISOString(),
   };
 }
@@ -849,7 +898,7 @@ async function listTrackedJobs() {
           }
         : null;
       const nextRecord = upstream
-        ? { ...record, summary: status.summary, upstream, lastStatusCheckedAt: status.checkedAt, accessMessage }
+        ? { ...record, summary: status.summary, upstream, runtime: runtimeInfoFromJob(record, upstream, status.summary), lastStatusCheckedAt: status.checkedAt, accessMessage }
         : record;
       nextRecords.push(nextRecord);
       jobs.push({
@@ -857,6 +906,7 @@ async function listTrackedJobs() {
         summary: status.summary,
         checkedAt: status.checkedAt,
         upstream,
+        runtime: runtimeInfoFromJob(nextRecord, upstream, status.summary),
         accessMessage,
       });
     } catch (error) {
@@ -871,6 +921,7 @@ async function listTrackedJobs() {
           },
           checkedAt: new Date().toISOString(),
           upstream: record.upstream,
+          runtime: runtimeInfoFromJob(record, record.upstream, record.summary),
           warning: `状态查询失败，沿用上次连接信息：${String(error?.message || error)}`,
         });
         nextRecords.push(record);
@@ -886,6 +937,7 @@ async function listTrackedJobs() {
         },
         checkedAt: new Date().toISOString(),
         upstream: null,
+        runtime: runtimeInfoFromJob(record, null, record.summary),
       });
       nextRecords.push(record);
     }
@@ -964,6 +1016,21 @@ async function runStarlightDirectSubmit(form) {
       workDir: submitResponse.body?.spec?.work_dir || "",
     };
     result.statusSummary = summarizeJobStatus(result.runningResponse.body);
+    const runningSpec = result.runningResponse.body?.spec || submitResponse.body?.spec || {};
+    const upstream = {
+      status: runningSpec.status,
+      createdAt: runningSpec.created_at,
+      updatedAt: runningSpec.updated_at,
+      startedAt: runningSpec.started_at,
+      endAt: runningSpec.end_at,
+      nodeName: runningSpec.node_name,
+      ip: runningSpec.ip,
+      jobFee: runningSpec.job_fee,
+      proxies: runningSpec.proxies || [],
+    };
+    result.runtime = runtimeInfoFromJob({
+      createdAt: runningSpec.created_at || new Date().toISOString(),
+    }, upstream, result.statusSummary);
     await upsertJobRecord({
       cluster,
       jobId: jobName,
@@ -977,6 +1044,8 @@ async function runStarlightDirectSubmit(form) {
       },
       workDir: submitResponse.body?.spec?.work_dir || "",
       createdAt: submitResponse.body?.spec?.created_at || new Date().toISOString(),
+      upstream,
+      runtime: result.runtime,
       runId,
       source: "direct-api",
     });

@@ -353,6 +353,19 @@ body.cx-store-market-only #main-container > :not(.cx-market-section) {
   text-align: center;
 }
 
+.cx-instance-runtime {
+  min-width: 92px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--cx-brand-green-soft, #eef6ff);
+  color: var(--cx-brand-green, #287cff);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .cx-connect-dialog {
   position: fixed;
   inset: 0;

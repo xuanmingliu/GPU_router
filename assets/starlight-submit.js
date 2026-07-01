@@ -214,6 +214,16 @@
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   }
 
+  function formatDuration(totalSeconds) {
+    const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const rest = seconds % 60;
+    if (hours > 0) return `${hours}小时${String(minutes).padStart(2, "0")}分`;
+    if (minutes > 0) return `${minutes}分${String(rest).padStart(2, "0")}秒`;
+    return `${rest}秒`;
+  }
+
   function readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -376,6 +386,8 @@
     const parts = [];
     if (meta.jobId) parts.push(`作业ID：${meta.jobId}`);
     if (meta.cluster) parts.push(`集群：${meta.cluster}`);
+    if (meta.runtime?.startedAt) parts.push(`开始时间：${new Date(meta.runtime.startedAt).toLocaleString()}`);
+    if (meta.runtime?.elapsedSeconds != null) parts.push(`已运行：${formatDuration(meta.runtime.elapsedSeconds)}`);
     if (meta.checkedAt) parts.push(`更新时间：${new Date(meta.checkedAt).toLocaleString()}`);
     if (summary?.reason) {
       const line = String(summary.reason).split("\n").map((item) => item.trim()).find(Boolean);
@@ -396,6 +408,7 @@
     setLiveStatus(data.summary, {
       cluster: data.cluster,
       jobId: data.jobId,
+      runtime: data.runtime,
       checkedAt: data.checkedAt,
     });
     if (data.summary?.done) stopJobPolling();

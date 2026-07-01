@@ -59,6 +59,26 @@
     return Promise.resolve();
   }
 
+  function formatDuration(totalSeconds) {
+    const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const rest = seconds % 60;
+    if (hours > 0) return `${hours}小时${String(minutes).padStart(2, "0")}分`;
+    if (minutes > 0) return `${minutes}分${String(rest).padStart(2, "0")}秒`;
+    return `${rest}秒`;
+  }
+
+  function runtimeSeconds(job) {
+    const start = job.runtime && job.runtime.startedAt;
+    if (!start) return job.runtime && job.runtime.elapsedSeconds;
+    const startMs = new Date(start).getTime();
+    if (!Number.isFinite(startMs)) return job.runtime && job.runtime.elapsedSeconds;
+    const end = job.runtime && job.runtime.endedAt;
+    const endMs = end ? new Date(end).getTime() : Date.now();
+    return Math.max(0, Math.floor(((Number.isFinite(endMs) ? endMs : Date.now()) - startMs) / 1000));
+  }
+
   async function readJsonResponse(response) {
     const text = await response.text();
     const contentType = response.headers.get("content-type") || "";
@@ -269,6 +289,13 @@
     const actionsTarget = actionsCell.querySelector("div") || actionsCell;
     const box = document.createElement("div");
     box.className = "cx-instance-inline-access";
+
+    if (job.runtime?.startedAt || job.runtime?.elapsedSeconds != null) {
+      const runtime = document.createElement("div");
+      runtime.className = "cx-instance-runtime";
+      runtime.textContent = `已运行 ${formatDuration(runtimeSeconds(job))}`;
+      box.appendChild(runtime);
+    }
 
     const button = document.createElement("button");
     button.type = "button";
