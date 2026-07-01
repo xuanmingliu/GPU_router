@@ -5,14 +5,9 @@
   const partitionsByCluster = {
     k8s_xingyiAI_2: [["xy-a100", "xy-a100"], ["xy-a800x", "xy-a800x"], ["xy-h100", "xy-h100"], ["xy-h100x", "xy-h100x"], ["xy-v100x", "xy-v100x"]],
     k8s_xingyiAI: [["xy-a800", "xy-a800"], ["a800-mig-3g.40gb-week", "a800-mig-3g.40gb-week"], ["mig-realtime", "mig-realtime"]],
-    k8s_xingyi: [["x86-cpu", "x86-cpu"]],
-    k8s_jove: [["gpu-a100", "gpu-a100"]],
-    k8s_ss01: [["gpu-a100nv", "gpu-a100nv"]],
-    k8s_venus: [["venus-gpu", "venus-gpu"], ["venus-gpu-localdisk", "venus-gpu-localdisk"], ["venus-bigmem", "venus-bigmem"]],
   };
 
   const plansByClusterPartition = {
-    "k8s_xingyi/x86-cpu": [["default:4核/0块/30GiB", "4核/0块/30GiB"], ["default:8核/0块/60GiB", "8核/0块/60GiB"], ["default:16核/0块/120GiB", "16核/0块/120GiB"], ["default:32核/0块/240GiB", "32核/0块/240GiB"], ["default:64核/0块/480GiB", "64核/0块/480GiB"]],
     "k8s_xingyiAI/xy-a800": [["default:6核/1块/120GiB", "6核/1块/120GiB"], ["default:12核/2块/240GiB", "12核/2块/240GiB"], ["default:24核/4块/480GiB", "24核/4块/480GiB"], ["default:48核/8块/960GiB", "48核/8块/960GiB"]],
     "k8s_xingyiAI/a800-mig-3g.40gb-week": [["default:6核/1块/60GiB", "6核/1块/60GiB"], ["default:12核/2块/120GiB", "12核/2块/120GiB"], ["default:24核/4块/240GiB", "24核/4块/240GiB"]],
     "k8s_xingyiAI/mig-realtime": [["default:4核/1块/41GiB", "4核/1块/41GiB"]],
@@ -21,11 +16,6 @@
     "k8s_xingyiAI_2/xy-h100": [["default:14核/1块/240GiB", "14核/1块/240GiB"], ["default:28核/2块/480GiB", "28核/2块/480GiB"], ["default:56核/4块/960GiB", "56核/4块/960GiB"], ["default:112核/8块/1920GiB", "112核/8块/1920GiB"]],
     "k8s_xingyiAI_2/xy-h100x": [["default:14核/1块/240GiB", "14核/1块/240GiB"], ["default:28核/2块/480GiB", "28核/2块/480GiB"], ["default:56核/4块/960GiB", "56核/4块/960GiB"], ["default:112核/8块/1920GiB", "112核/8块/1920GiB"]],
     "k8s_xingyiAI_2/xy-v100x": [["default:12核/1块/60GiB", "12核/1块/60GiB"], ["default:24核/2块/120GiB", "24核/2块/120GiB"], ["default:48核/4块/240GiB", "48核/4块/240GiB"]],
-    "k8s_jove/gpu-a100": [["default:6核/1块/120GiB", "6核/1块/120GiB"], ["default:12核/2块/240GiB", "12核/2块/240GiB"], ["default:24核/4块/480GiB", "24核/4块/480GiB"], ["default:48核/8块/960GiB", "48核/8块/960GiB"]],
-    "k8s_ss01/gpu-a100nv": [["default:7核/1块/120GiB", "7核/1块/120GiB"], ["default:14核/2块/240GiB", "14核/2块/240GiB"], ["default:28核/4块/480GiB", "28核/4块/480GiB"], ["default:56核/8块/960GiB", "56核/8块/960GiB"]],
-    "k8s_venus/venus-gpu": [["default:6核/1块/60GiB", "6核/1块/60GiB"], ["default:12核/2块/120GiB", "12核/2块/120GiB"], ["default:24核/4块/240GiB", "24核/4块/240GiB"]],
-    "k8s_venus/venus-gpu-localdisk": [["default:8核/0块/70GiB", "8核/0块/70GiB"], ["default:5核/1块/43GiB", "5核/1块/43GiB"], ["default:14核/2块/120GiB", "14核/2块/120GiB"], ["default:28核/4块/240GiB", "28核/4块/240GiB"], ["default:8核/4块/240GiB", "8核/4块/240GiB"]],
-    "k8s_venus/venus-bigmem": [["default:9核/0块/185GiB", "9核/0块/185GiB"], ["default:18核/0块/370GiB", "18核/0块/370GiB"], ["default:36核/0块/740GiB", "36核/0块/740GiB"]],
   };
 
   let selectedScriptFile = null;
@@ -44,17 +34,6 @@
   }];
 
   const resourceCards = [
-    {
-      title: "CPU云主机（通用计算）",
-      chip: "CPU",
-      model: "x86 CPU",
-      cluster: "k8s_xingyi",
-      partition: "x86-cpu",
-      plan: "default:4核/0块/30GiB",
-      specs: ["4-64 核 CPU", "30-480 GiB 内存", "无 GPU 调试/编译环境"],
-      desc: "适合数据预处理、编译、轻量推理和通用计算任务。",
-      accent: "#1f5b3b",
-    },
     {
       title: "NVIDIA A100 80GB",
       chip: "GPU",
@@ -131,61 +110,6 @@
       specs: ["1-4 块 GPU", "12-48 核 CPU", "60-240 GiB 内存"],
       desc: "适合中小规模训练、教学实验和兼容性验证。",
       accent: "#dc2626",
-    },
-    {
-      title: "NVIDIA A100 通用池",
-      chip: "GPU",
-      model: "A100",
-      cluster: "k8s_jove",
-      partition: "gpu-a100",
-      plan: "default:6核/1块/120GiB",
-      specs: ["1-8 块 GPU", "6-48 核 CPU", "120-960 GiB 内存"],
-      desc: "适合稳定训练、模型精调和通用 GPU 计算任务。",
-      accent: "#15803d",
-    },
-    {
-      title: "NVIDIA A100 NVLink",
-      chip: "GPU",
-      model: "A100NV",
-      cluster: "k8s_ss01",
-      partition: "gpu-a100nv",
-      plan: "default:7核/1块/120GiB",
-      specs: ["1-8 块 GPU", "7-56 核 CPU", "120-960 GiB 内存"],
-      desc: "适合多卡通信压力更高的分布式训练任务。",
-      accent: "#059669",
-    },
-    {
-      title: "NVIDIA GPU 通用型",
-      chip: "GPU",
-      model: "GPU",
-      cluster: "k8s_venus",
-      partition: "venus-gpu",
-      plan: "default:6核/1块/60GiB",
-      specs: ["1-4 块 GPU", "6-24 核 CPU", "60-240 GiB 内存"],
-      desc: "适合教学实验、算法验证和轻中量级训练作业。",
-      accent: "#9333ea",
-    },
-    {
-      title: "NVIDIA GPU 本地盘",
-      chip: "GPU",
-      model: "GPU SSD",
-      cluster: "k8s_venus",
-      partition: "venus-gpu-localdisk",
-      plan: "default:5核/1块/43GiB",
-      specs: ["0-4 块 GPU", "5-28 核 CPU", "43-240 GiB 内存"],
-      desc: "适合需要本地临时盘吞吐的数据处理和训练任务。",
-      accent: "#c2410c",
-    },
-    {
-      title: "CPU大内存实例",
-      chip: "CPU",
-      model: "BigMem",
-      cluster: "k8s_venus",
-      partition: "venus-bigmem",
-      plan: "default:9核/0块/185GiB",
-      specs: ["9-36 核 CPU", "185-740 GiB 内存", "无 GPU"],
-      desc: "适合内存敏感的数据分析、预处理和 CPU 计算任务。",
-      accent: "#475569",
     },
   ];
 

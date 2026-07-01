@@ -219,10 +219,6 @@
             <select id="cluster" name="cluster">
               <option value="k8s_xingyiAI_2">k8s_xingyiAI_2 - 星逸智算集群</option>
               <option value="k8s_xingyiAI">k8s_xingyiAI - 星逸AI集群</option>
-              <option value="k8s_xingyi">k8s_xingyi - 星逸CPU集群</option>
-              <option value="k8s_jove">k8s_jove - Jove集群</option>
-              <option value="k8s_ss01">k8s_ss01 - SS01集群</option>
-              <option value="k8s_venus">k8s_venus - 启明集群</option>
             </select>
           </div>
           <div>
@@ -361,30 +357,9 @@
           ["a800-mig-3g.40gb-week", "a800-mig-3g.40gb-week"],
           ["mig-realtime", "mig-realtime"],
         ],
-        k8s_xingyi: [
-          ["x86-cpu", "x86-cpu"],
-        ],
-        k8s_jove: [
-          ["gpu-a100", "gpu-a100"],
-        ],
-        k8s_ss01: [
-          ["gpu-a100nv", "gpu-a100nv"],
-        ],
-        k8s_venus: [
-          ["venus-gpu", "venus-gpu"],
-          ["venus-gpu-localdisk", "venus-gpu-localdisk"],
-          ["venus-bigmem", "venus-bigmem"],
-        ],
       };
 
       const plansByClusterPartition = {
-        "k8s_xingyi/x86-cpu": [
-          ["default:4核/0块/30GiB", "4核/0块/30GiB"],
-          ["default:8核/0块/60GiB", "8核/0块/60GiB"],
-          ["default:16核/0块/120GiB", "16核/0块/120GiB"],
-          ["default:32核/0块/240GiB", "32核/0块/240GiB"],
-          ["default:64核/0块/480GiB", "64核/0块/480GiB"],
-        ],
         "k8s_xingyiAI/xy-a800": [
           ["default:6核/1块/120GiB", "6核/1块/120GiB"],
           ["default:12核/2块/240GiB", "12核/2块/240GiB"],
@@ -427,35 +402,6 @@
           ["default:12核/1块/60GiB", "12核/1块/60GiB"],
           ["default:24核/2块/120GiB", "24核/2块/120GiB"],
           ["default:48核/4块/240GiB", "48核/4块/240GiB"],
-        ],
-        "k8s_jove/gpu-a100": [
-          ["default:6核/1块/120GiB", "6核/1块/120GiB"],
-          ["default:12核/2块/240GiB", "12核/2块/240GiB"],
-          ["default:24核/4块/480GiB", "24核/4块/480GiB"],
-          ["default:48核/8块/960GiB", "48核/8块/960GiB"],
-        ],
-        "k8s_ss01/gpu-a100nv": [
-          ["default:7核/1块/120GiB", "7核/1块/120GiB"],
-          ["default:14核/2块/240GiB", "14核/2块/240GiB"],
-          ["default:28核/4块/480GiB", "28核/4块/480GiB"],
-          ["default:56核/8块/960GiB", "56核/8块/960GiB"],
-        ],
-        "k8s_venus/venus-gpu": [
-          ["default:6核/1块/60GiB", "6核/1块/60GiB"],
-          ["default:12核/2块/120GiB", "12核/2块/120GiB"],
-          ["default:24核/4块/240GiB", "24核/4块/240GiB"],
-        ],
-        "k8s_venus/venus-gpu-localdisk": [
-          ["default:8核/0块/70GiB", "8核/0块/70GiB"],
-          ["default:5核/1块/43GiB", "5核/1块/43GiB"],
-          ["default:14核/2块/120GiB", "14核/2块/120GiB"],
-          ["default:28核/4块/240GiB", "28核/4块/240GiB"],
-          ["default:8核/4块/240GiB", "8核/4块/240GiB"],
-        ],
-        "k8s_venus/venus-bigmem": [
-          ["default:9核/0块/185GiB", "9核/0块/185GiB"],
-          ["default:18核/0块/370GiB", "18核/0块/370GiB"],
-          ["default:36核/0块/740GiB", "36核/0块/740GiB"],
         ],
       };
 
