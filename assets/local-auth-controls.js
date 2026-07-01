@@ -459,13 +459,24 @@
   }
 
   function removeNativeAccountMenu() {
-    const markers = ["主账号手机号", "信用额度", "我的租用", "我的卡包", "账号信息", "充值记录", "兑换中心"];
+    const markers = [
+      "主账号手机号",
+      "信用额度",
+      "我的租用",
+      "我的卡包",
+      "账号信息",
+      "充值记录",
+      "兑换中心",
+      "账户余额",
+      "综合可用",
+      "算力券",
+    ];
     const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
     candidates.forEach((element) => {
       if (element.id === "cx-local-auth-popover" || element.closest("#cx-local-auth-popover")) return;
       const text = (element.textContent || "").replace(/\s+/g, "");
       const hits = markers.reduce((count, marker) => count + (text.includes(marker) ? 1 : 0), 0);
-      if (hits >= 2) {
+      if (hits >= 2 || (text.includes("账户余额") && text.includes("综合可用"))) {
         const overlay = element.closest(".v-overlay.v-menu") || element;
         overlay.remove();
       }
