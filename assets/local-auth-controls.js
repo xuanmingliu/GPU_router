@@ -3,6 +3,7 @@
   window.__cxLocalAuthControlsLoaded = true;
 
   let activeAccount = "";
+  let activeBalance = "";
   let accountClickHandlerAttached = false;
   let nativeMenuObserver = null;
   let notificationCleanupInstalled = false;
@@ -80,6 +81,14 @@
         background: #ffffff;
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
       }
+      .cx-local-auth-balance {
+        padding: 8px 16px 7px;
+        border-bottom: 1px solid #edf0f5;
+        color: #1f5b3b;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
       .cx-local-auth-menu-button {
         width: 100%;
         min-height: 38px;
@@ -120,6 +129,106 @@
       [data-cx-remove-support="true"] {
         display: none !important;
         pointer-events: none !important;
+      }
+      .cx-recharge-dialog {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, 0.42);
+      }
+      .cx-recharge-dialog.cx-open {
+        display: flex;
+      }
+      .cx-recharge-card {
+        width: min(420px, calc(100vw - 48px));
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 18px 55px rgba(15, 23, 42, 0.22);
+        overflow: hidden;
+      }
+      .cx-recharge-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid #edf0f5;
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .cx-recharge-close {
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #475569;
+        cursor: pointer;
+        font-size: 22px;
+      }
+      .cx-recharge-body {
+        padding: 18px;
+      }
+      .cx-recharge-input {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #dcdfe6;
+        border-radius: 4px;
+        padding: 0 12px;
+        color: #333333;
+        font-size: 14px;
+        text-transform: uppercase;
+      }
+      .cx-recharge-input:focus {
+        border-color: #1f5b3b;
+        outline: none;
+      }
+      .cx-recharge-message {
+        min-height: 20px;
+        margin-top: 10px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .cx-recharge-message.cx-error {
+        color: #dc2626;
+      }
+      .cx-recharge-message.cx-success {
+        color: #1f5b3b;
+      }
+      .cx-recharge-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 18px 18px;
+      }
+      .cx-recharge-secondary,
+      .cx-recharge-primary {
+        height: 36px;
+        border-radius: 4px;
+        padding: 0 18px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .cx-recharge-secondary {
+        border: 1px solid #dcdfe6;
+        background: #ffffff;
+        color: #333333;
+      }
+      .cx-recharge-primary {
+        border: 0;
+        background: #1f5b3b;
+        color: #ffffff;
+      }
+      .cx-recharge-primary:disabled {
+        background: #9ca3af;
+        cursor: default;
       }
     `;
     document.head.appendChild(style);
@@ -251,6 +360,104 @@
     document.getElementById("cx-local-auth-popover")?.remove();
   }
 
+  function closeRechargeDialog() {
+    document.getElementById("cx-recharge-dialog")?.classList.remove("cx-open");
+  }
+
+  function ensureRechargeDialog() {
+    ensureStyle();
+    let dialog = document.getElementById("cx-recharge-dialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("div");
+    dialog.id = "cx-recharge-dialog";
+    dialog.className = "cx-recharge-dialog";
+    dialog.innerHTML = `
+      <section class="cx-recharge-card" role="dialog" aria-modal="true">
+        <div class="cx-recharge-head">
+          <span>充值余额</span>
+          <button class="cx-recharge-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="cx-recharge-body">
+          <input class="cx-recharge-input" placeholder="请输入充值码" autocomplete="off">
+          <div class="cx-recharge-message">充值码兑换后将直接增加到账户余额。</div>
+        </div>
+        <div class="cx-recharge-actions">
+          <button class="cx-recharge-secondary" type="button">取消</button>
+          <button class="cx-recharge-primary" type="button">确认充值</button>
+        </div>
+      </section>
+    `;
+    const input = dialog.querySelector(".cx-recharge-input");
+    const message = dialog.querySelector(".cx-recharge-message");
+    const confirm = dialog.querySelector(".cx-recharge-primary");
+    const cancel = dialog.querySelector(".cx-recharge-secondary");
+
+    function setMessage(text, type) {
+      message.textContent = text;
+      message.classList.toggle("cx-error", type === "error");
+      message.classList.toggle("cx-success", type === "success");
+    }
+
+    async function submit() {
+      const code = input.value.trim();
+      if (!code) {
+        setMessage("请输入充值码。", "error");
+        input.focus();
+        return;
+      }
+      confirm.disabled = true;
+      confirm.textContent = "充值中";
+      setMessage("正在校验充值码...", "");
+      try {
+        const response = await fetch("/local-auth/redeem-code", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.reason || payload.error || "充值失败");
+        activeBalance = payload.balance;
+        setMessage(`充值成功：+${payload.amount} 元，当前余额 ${payload.balance} 元。`, "success");
+        input.value = "";
+        setTimeout(() => {
+          closeRechargeDialog();
+          render();
+        }, 900);
+      } catch (error) {
+        setMessage(String(error.message || error), "error");
+      } finally {
+        confirm.disabled = false;
+        confirm.textContent = "确认充值";
+      }
+    }
+
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog || event.target.closest(".cx-recharge-close") || event.target === cancel) {
+        closeRechargeDialog();
+      }
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submit();
+      if (event.key === "Escape") closeRechargeDialog();
+    });
+    confirm.addEventListener("click", submit);
+    document.body.appendChild(dialog);
+    return dialog;
+  }
+
+  function openRechargeDialog() {
+    removePopover();
+    const dialog = ensureRechargeDialog();
+    const input = dialog.querySelector(".cx-recharge-input");
+    const message = dialog.querySelector(".cx-recharge-message");
+    input.value = "";
+    message.textContent = "充值码兑换后将直接增加到账户余额。";
+    message.classList.remove("cx-error", "cx-success");
+    dialog.classList.add("cx-open");
+    setTimeout(() => input.focus(), 0);
+  }
+
   function removeNativeAccountMenu() {
     const markers = ["主账号手机号", "信用额度", "我的租用", "我的卡包", "账号信息", "充值记录", "兑换中心"];
     const candidates = Array.from(document.body.querySelectorAll(".v-overlay.v-menu, .v-overlay__content, .v-card, .v-list, nav, aside"));
@@ -273,10 +480,23 @@
     const popover = document.createElement("div");
     popover.id = "cx-local-auth-popover";
     popover.className = "cx-local-auth-popover";
-    popover.innerHTML = `<button class="cx-local-auth-menu-button" type="button">退出登录</button>`;
-    const button = popover.querySelector("button");
+    popover.innerHTML = `
+      <div class="cx-local-auth-balance">余额：${activeBalance || "0.00"} 元</div>
+      <button class="cx-local-auth-menu-button" data-action="recharge" type="button">充值</button>
+      <button class="cx-local-auth-menu-button" data-action="logout" type="button">退出登录</button>
+    `;
+    const rechargeButton = popover.querySelector('[data-action="recharge"]');
+    const logoutButton = popover.querySelector('[data-action="logout"]');
     ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
-      button.addEventListener(eventName, (event) => startLogout(event, button), true);
+      rechargeButton.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        openRechargeDialog();
+      }, true);
+    });
+    ["pointerdown", "mousedown", "touchstart", "click"].forEach((eventName) => {
+      logoutButton.addEventListener(eventName, (event) => startLogout(event, logoutButton), true);
     });
     document.body.appendChild(popover);
 
@@ -369,6 +589,7 @@
       removePopover();
       return;
     }
+    activeBalance = payload.balance || "0.00";
     attachAccountClickHandler(payload.account);
   }
 

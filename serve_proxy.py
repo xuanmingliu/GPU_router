@@ -32,6 +32,29 @@ POSTGRES_DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 POSTGRES_SCHEMA_PATH = ROOT / "database" / "schema.postgres.sql"
 ENABLE_LEGACY_JOB_CLAIM = os.environ.get("ENABLE_LEGACY_JOB_CLAIM", "").strip().lower() in {"1", "true", "yes"}
 
+RECHARGE_CODES = {
+    "e21eabedc87ffa7041cedd347b36bd7906e9d61efdcbae2faa4737d89e531918": {
+        "codeId": "FZC-100",
+        "amountCents": 10000,
+    },
+    "fefb7adf68f4cdb06e676722d5885156fc3596ad2cf9ad2bfb2f67d342a6c8b6": {
+        "codeId": "FZC-200",
+        "amountCents": 20000,
+    },
+    "453738e746d5ed0b1952d3f6f009c0176e3ee5dac36a66a8d65dd3b684991d1b": {
+        "codeId": "FZC-300",
+        "amountCents": 30000,
+    },
+    "e65bdd9f4cb55e8dee029cad0a2b3e966eff4246f90bf2441c4e0e0090ef7b47": {
+        "codeId": "FZC-400",
+        "amountCents": 40000,
+    },
+    "2489fe61887cad702edffa70b5907e93059d6681e7c89b39afe5edaf973bda83": {
+        "codeId": "FZC-500",
+        "amountCents": 50000,
+    },
+}
+
 os.chdir(ROOT)
 
 
@@ -151,12 +174,14 @@ def load_auth_db_mysql():
     db = ensure_auth_shape({})
     with mysql_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT account, password_hash, created_at FROM users")
+            cur.execute("SELECT account, password_hash, balance_cents, frozen_cents, created_at FROM users")
             for row in cur.fetchall():
                 created = row.get("created_at")
                 db["users"][row["account"]] = {
                     "account": row["account"],
                     "passwordHash": row["password_hash"],
+                    "balanceCents": int(row.get("balance_cents") or 0),
+                    "frozenCents": int(row.get("frozen_cents") or 0),
                     "createdAt": created.isoformat() if hasattr(created, "isoformat") else str(created or ""),
                 }
             cur.execute("SELECT token, account, created_at_unix FROM sessions")
@@ -177,12 +202,14 @@ def load_auth_db_postgres():
     db = ensure_auth_shape({})
     with postgres_connect() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT account, password_hash, created_at FROM users")
+            cur.execute("SELECT account, password_hash, balance_cents, frozen_cents, created_at FROM users")
             for row in cur.fetchall():
                 created = row.get("created_at")
                 db["users"][row["account"]] = {
                     "account": row["account"],
                     "passwordHash": row["password_hash"],
+                    "balanceCents": int(row.get("balance_cents") or 0),
+                    "frozenCents": int(row.get("frozen_cents") or 0),
                     "createdAt": created.isoformat() if hasattr(created, "isoformat") else str(created or ""),
                 }
             cur.execute("SELECT token, account, created_at_unix FROM sessions")
@@ -211,11 +238,19 @@ def save_auth_db_mysql(data):
             for account, user in data.get("users", {}).items():
                 cur.execute(
                     """
-                    INSERT INTO users (account, password_hash)
-                    VALUES (%s, %s)
-                    ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)
+                    INSERT INTO users (account, password_hash, balance_cents, frozen_cents)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                      password_hash = VALUES(password_hash),
+                      balance_cents = VALUES(balance_cents),
+                      frozen_cents = VALUES(frozen_cents)
                     """,
-                    (account, user.get("passwordHash") or ""),
+                    (
+                        account,
+                        user.get("passwordHash") or "",
+                        int(user.get("balanceCents") or 0),
+                        int(user.get("frozenCents") or 0),
+                    ),
                 )
 
             for token, session in data.get("sessions", {}).items():
@@ -251,13 +286,20 @@ def save_auth_db_postgres(data):
             for account, user in data.get("users", {}).items():
                 cur.execute(
                     """
-                    INSERT INTO users (account, password_hash)
-                    VALUES (%s, %s)
+                    INSERT INTO users (account, password_hash, balance_cents, frozen_cents)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (account) DO UPDATE SET
                       password_hash = EXCLUDED.password_hash,
+                      balance_cents = EXCLUDED.balance_cents,
+                      frozen_cents = EXCLUDED.frozen_cents,
                       updated_at = CURRENT_TIMESTAMP
                     """,
-                    (account, user.get("passwordHash") or ""),
+                    (
+                        account,
+                        user.get("passwordHash") or "",
+                        int(user.get("balanceCents") or 0),
+                        int(user.get("frozenCents") or 0),
+                    ),
                 )
 
             for token, session in data.get("sessions", {}).items():
@@ -358,8 +400,135 @@ def delete_owned_job_key(account, key):
     save_auth_db(db)
 
 
+def redeem_recharge_code(account, code):
+    if not account:
+        return False, {"reason": "请先登录"}
+    code_hash = hash_recharge_code(code)
+    code_meta = RECHARGE_CODES.get(code_hash)
+    if not code_meta:
+        return False, {"reason": "充值码不存在或格式不正确"}
+
+    amount = int(code_meta["amountCents"])
+    code_id = code_meta["codeId"]
+    now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    if mysql_enabled():
+        with mysql_connect() as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT account FROM recharge_code_redemptions WHERE code_hash = %s", (code_hash,))
+                    if cur.fetchone():
+                        conn.rollback()
+                        return False, {"reason": "该充值码已被使用"}
+                    cur.execute("SELECT balance_cents FROM users WHERE account = %s FOR UPDATE", (account,))
+                    row = cur.fetchone()
+                    if not row:
+                        conn.rollback()
+                        return False, {"reason": "账号不存在，请重新登录"}
+                    balance = int(row.get("balance_cents") or 0) + amount
+                    cur.execute("UPDATE users SET balance_cents = %s WHERE account = %s", (balance, account))
+                    cur.execute(
+                        """
+                        INSERT INTO recharge_code_redemptions (code_hash, code_id, account, amount_cents)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (code_hash, code_id, account, amount),
+                    )
+                    cur.execute(
+                        """
+                        INSERT INTO balance_ledger
+                          (account, direction, amount_cents, balance_after_cents, business_type, business_id, note)
+                        VALUES (%s, 'in', %s, %s, 'recharge_code', %s, %s)
+                        """,
+                        (account, amount, balance, code_id, f"充值码兑换 +{format_money(amount)} 元"),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return True, {"amountCents": amount, "balanceCents": balance, "codeId": code_id}
+
+    if postgres_enabled():
+        with postgres_connect() as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT account FROM recharge_code_redemptions WHERE code_hash = %s", (code_hash,))
+                    if cur.fetchone():
+                        conn.rollback()
+                        return False, {"reason": "该充值码已被使用"}
+                    cur.execute("SELECT balance_cents FROM users WHERE account = %s FOR UPDATE", (account,))
+                    row = cur.fetchone()
+                    if not row:
+                        conn.rollback()
+                        return False, {"reason": "账号不存在，请重新登录"}
+                    balance = int(row.get("balance_cents") or 0) + amount
+                    cur.execute("UPDATE users SET balance_cents = %s, updated_at = CURRENT_TIMESTAMP WHERE account = %s", (balance, account))
+                    cur.execute(
+                        """
+                        INSERT INTO recharge_code_redemptions (code_hash, code_id, account, amount_cents)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (code_hash, code_id, account, amount),
+                    )
+                    cur.execute(
+                        """
+                        INSERT INTO balance_ledger
+                          (account, direction, amount_cents, balance_after_cents, business_type, business_id, note)
+                        VALUES (%s, 'in', %s, %s, 'recharge_code', %s, %s)
+                        """,
+                        (account, amount, balance, code_id, f"充值码兑换 +{format_money(amount)} 元"),
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+        return True, {"amountCents": amount, "balanceCents": balance, "codeId": code_id}
+
+    db = load_auth_db()
+    used_codes = db.setdefault("usedRechargeCodes", {})
+    if code_hash in used_codes:
+        return False, {"reason": "该充值码已被使用"}
+    users = db.setdefault("users", {})
+    user = users.get(account)
+    if not user:
+        return False, {"reason": "账号不存在，请重新登录"}
+    balance = int(user.get("balanceCents") or 0) + amount
+    user["balanceCents"] = balance
+    user.setdefault("frozenCents", 0)
+    used_codes[code_hash] = {
+        "codeId": code_id,
+        "account": account,
+        "amountCents": amount,
+        "redeemedAt": now_iso,
+    }
+    db.setdefault("balanceLedger", []).append({
+        "account": account,
+        "direction": "in",
+        "amountCents": amount,
+        "balanceAfterCents": balance,
+        "businessType": "recharge_code",
+        "businessId": code_id,
+        "note": f"充值码兑换 +{format_money(amount)} 元",
+        "createdAt": now_iso,
+    })
+    save_auth_db(db)
+    return True, {"amountCents": amount, "balanceCents": balance, "codeId": code_id}
+
+
 def hash_password(password):
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
+def normalize_recharge_code(code):
+    return "".join(str(code or "").strip().upper().split())
+
+
+def hash_recharge_code(code):
+    return hashlib.sha256(normalize_recharge_code(code).encode("utf-8")).hexdigest()
+
+
+def format_money(cents):
+    return f"{int(cents or 0) / 100:.2f}"
 
 
 def now_ts():
@@ -666,10 +835,14 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 {"ok": False, "reason": "未登录"},
                 extra_headers={"Set-Cookie": self.clear_cookie_header()} if token else None,
             )
+        user = session.get("user") or {}
+        balance_cents = int(user.get("balanceCents") or 0)
         return self.json_response({
             "ok": True,
             "account": session["account"],
             "token": session["token"],
+            "balanceCents": balance_cents,
+            "balance": format_money(balance_cents),
         })
 
     def handle_local_auth(self, path, body):
@@ -678,6 +851,22 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             token = payload.get("token") or self.cookie_token()
             delete_session_token(token)
             return self.json_response({"ok": True}, extra_headers={"Set-Cookie": self.clear_cookie_header()})
+
+        if path == "/local-auth/redeem-code":
+            session, _ = self.session_record()
+            if not session:
+                return self.json_response({"ok": False, "reason": "请先登录后再充值"}, status=401)
+            ok, result = redeem_recharge_code(session["account"], payload.get("code"))
+            if not ok:
+                return self.json_response({"ok": False, **result}, status=400)
+            return self.json_response({
+                "ok": True,
+                "amountCents": result["amountCents"],
+                "amount": format_money(result["amountCents"]),
+                "balanceCents": result["balanceCents"],
+                "balance": format_money(result["balanceCents"]),
+                "codeId": result["codeId"],
+            })
 
         account = str(payload.get("account") or "").strip().lower()
         password = str(payload.get("password") or "")
@@ -694,6 +883,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             users[account] = {
                 "account": account,
                 "passwordHash": hash_password(password),
+                "balanceCents": 0,
+                "frozenCents": 0,
                 "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
             save_auth_db(db)
@@ -759,6 +950,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             return self.json_response({"status": 2, "reason": "获取token失败!", "data": ""})
         suffix = token[-8:]
         account = session.get("account") or ""
+        user = session.get("user") or {}
+        balance_cents = int(user.get("balanceCents") or 0)
         return self.json_response({
             "status": 0,
             "reason": "ok",
@@ -770,7 +963,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 "Nickname": account or f"附中云用户{suffix}",
                 "Phone": account if account.startswith("1") and len(account) == 11 else "13800138000",
                 "Email": account if "@" in account else "demo@chuanxinyun.local",
-                "Money": 0,
+                "Money": balance_cents / 100,
                 "PowerMoney": 0,
                 "CreditMoneyQuota": 0,
                 "VipLevel": 0,

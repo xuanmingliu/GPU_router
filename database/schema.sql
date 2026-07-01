@@ -92,3 +92,16 @@ CREATE TABLE IF NOT EXISTS balance_ledger (
     FOREIGN KEY (account) REFERENCES users(account)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS recharge_code_redemptions (
+  code_hash CHAR(64) NOT NULL,
+  code_id VARCHAR(64) NOT NULL,
+  account VARCHAR(255) NOT NULL,
+  amount_cents BIGINT NOT NULL,
+  redeemed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (code_hash),
+  KEY idx_recharge_code_redemptions_account (account),
+  CONSTRAINT fk_recharge_code_redemptions_account
+    FOREIGN KEY (account) REFERENCES users(account)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
