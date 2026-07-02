@@ -60,6 +60,18 @@
       accent: "#0891b2",
     },
     {
+      title: "NVIDIA A800 标准",
+      chip: "GPU",
+      model: "A800",
+      price: "￥5 / 小时",
+      cluster: "k8s_xingyiAI",
+      partition: "xy-a800",
+      plan: "default:6核/1块/120GiB",
+      specs: ["1-8 块 GPU", "6-48 核 CPU", "120-960 GiB 内存"],
+      desc: "适合标准训练、批量推理和常规 CUDA/PyTorch 容器作业。",
+      accent: "#0ea5a4",
+    },
+    {
       title: "NVIDIA A800 MIG",
       chip: "GPU",
       model: "A800 MIG",
