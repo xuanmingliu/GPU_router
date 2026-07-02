@@ -22,6 +22,7 @@
   let highlightedScriptFile = null;
   let backendDryRunOnly = false;
   let jobStatusTimer = null;
+  let currentJobRef = null;
   const starlightBackendOrigin = "https://gpu-router-starlight.onrender.com";
   const remoteFiles = [{
     name: "HDD_POOL",
@@ -297,6 +298,30 @@
     el("cx-output").textContent = JSON.stringify(copied, null, 2);
   }
 
+  function loadLastJobRef() {
+    try {
+      return JSON.parse(window.sessionStorage.getItem("cx-last-starlight-job") || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function saveLastJobRef(jobRef) {
+    if (!jobRef?.cluster || !jobRef?.jobId) return;
+    currentJobRef = {
+      ...jobRef,
+      submittedAt: jobRef.submittedAt || new Date().toISOString(),
+    };
+    window.sessionStorage.setItem("cx-last-starlight-job", JSON.stringify(currentJobRef));
+    updateRecentJobControl();
+  }
+
+  function clearLastJobRef() {
+    currentJobRef = null;
+    window.sessionStorage.removeItem("cx-last-starlight-job");
+    updateRecentJobControl();
+  }
+
   function setLiveStatus(summary, meta = {}) {
     const box = el("cx-live-status");
     const dot = el("cx-live-dot");
@@ -326,8 +351,7 @@
 
   async function fetchJobStatus(jobRef) {
     const params = new URLSearchParams({ cluster: jobRef.cluster, jobId: jobRef.jobId });
-    const res = await fetch(`/starlight-api/job-status?${params.toString()}`, { cache: "no-store" });
-    const data = await readJsonResponse(res);
+    const data = await fetchStarlightJson(`job-status?${params.toString()}`, { cache: "no-store" });
     setLiveStatus(data.summary, {
       cluster: data.cluster,
       jobId: data.jobId,
@@ -340,6 +364,7 @@
 
   function startJobPolling(jobRef) {
     if (!jobRef?.cluster || !jobRef?.jobId) return;
+    saveLastJobRef(jobRef);
     stopJobPolling();
     setLiveStatus({ label: "状态同步中", phase: "syncing" }, jobRef);
     fetchJobStatus(jobRef).catch((error) => {
@@ -350,6 +375,87 @@
         setLiveStatus({ label: "状态查询失败", phase: "unknown", reason: String(error.message || error) }, jobRef);
       });
     }, 5000);
+  }
+
+  async function stopCurrentJob() {
+    const jobRef = currentJobRef || loadLastJobRef();
+    if (!jobRef?.cluster || !jobRef?.jobId) {
+      window.alert("没有找到最近提交的作业");
+      return;
+    }
+    if (!window.confirm(`确定停止作业 ${jobRef.jobId} 吗？`)) return;
+    const button = document.querySelector("#cx-stop-job");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "停止中...";
+    }
+    try {
+      const data = await fetchStarlightJson("job-stop", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cluster: jobRef.cluster, jobId: jobRef.jobId }),
+      });
+      stopJobPolling();
+      if (document.querySelector("#cx-live-status")) {
+        setLiveStatus(data.status?.summary || { label: data.message || "停止请求已发送", phase: "syncing" }, {
+          cluster: jobRef.cluster,
+          jobId: jobRef.jobId,
+          runtime: data.status?.runtime,
+          checkedAt: data.status?.checkedAt,
+        });
+      }
+      updateRecentJobControl(data.status?.summary || { label: data.message || "停止请求已发送" });
+      window.alert(data.message || "停止请求已发送");
+    } catch (error) {
+      window.alert(`停止失败：${String(error.message || error)}`);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "停止运行";
+      }
+    }
+  }
+
+  function updateRecentJobControl(summary) {
+    const dock = document.querySelector("#cx-recent-job-control");
+    if (!dock) return;
+    const jobRef = currentJobRef || loadLastJobRef();
+    if (!jobRef?.cluster || !jobRef?.jobId) {
+      dock.classList.add("cx-hidden");
+      return;
+    }
+    dock.classList.remove("cx-hidden");
+    dock.querySelector(".cx-recent-job-title").textContent = jobRef.jobId;
+    dock.querySelector(".cx-recent-job-meta").textContent = `${jobRef.cluster}${summary?.label ? ` / ${summary.label}` : ""}`;
+  }
+
+  function mountRecentJobControl() {
+    if (!location.pathname.startsWith("/console")) return;
+    currentJobRef = currentJobRef || loadLastJobRef();
+    if (document.querySelector("#cx-recent-job-control")) {
+      updateRecentJobControl();
+      return;
+    }
+    const dock = document.createElement("div");
+    dock.id = "cx-recent-job-control";
+    dock.className = "cx-recent-job-control cx-hidden";
+    dock.innerHTML = `
+      <div class="cx-recent-job-copy">
+        <div class="cx-recent-job-kicker">最近作业</div>
+        <div class="cx-recent-job-title"></div>
+        <div class="cx-recent-job-meta"></div>
+      </div>
+      <button id="cx-stop-job" class="cx-danger-btn" type="button">停止运行</button>
+      <button id="cx-clear-job" class="cx-icon-btn" type="button" title="隐藏">×</button>
+    `;
+    document.body.appendChild(dock);
+    dock.querySelector("#cx-stop-job").addEventListener("click", stopCurrentJob);
+    dock.querySelector("#cx-clear-job").addEventListener("click", clearLastJobRef);
+    updateRecentJobControl();
+  }
+
+  function unmountRecentJobControl() {
+    document.querySelector("#cx-recent-job-control")?.remove();
   }
 
   function makeJobName(prefix) {
@@ -642,10 +748,7 @@
         });
         renderResult(data);
         if (data.submitted && data.jobRef) {
-          window.sessionStorage.setItem("cx-last-starlight-job", JSON.stringify({
-            ...data.jobRef,
-            submittedAt: new Date().toISOString(),
-          }));
+          saveLastJobRef(data.jobRef);
           location.href = "/console/dashboard";
         } else if (data.statusSummary) {
           setLiveStatus(data.statusSummary, data.jobRef || {});
@@ -682,8 +785,14 @@
   }
 
   function syncRoute() {
-    if (isStoreRoute()) mount();
-    else unmount();
+    if (isStoreRoute()) {
+      unmountRecentJobControl();
+      mount();
+    } else {
+      unmount();
+      if (location.pathname.startsWith("/console")) mountRecentJobControl();
+      else unmountRecentJobControl();
+    }
   }
 
   function watchRouteChanges() {

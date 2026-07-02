@@ -772,6 +772,47 @@ async function updateStarlightJobSpec(spec) {
   });
 }
 
+async function stopStarlightJob(cluster, jobId) {
+  if (!cluster || !jobId) throw new Error("cluster 和 jobId 不能为空");
+  const status = await getStarlightJobStatus(cluster, jobId);
+  const spec = status.response?.body?.spec;
+  if (!spec) throw new Error(status.response?.body?.info || "未获取到星光作业详情，无法停止");
+
+  if (status.summary?.done) {
+    return {
+      stopped: false,
+      alreadyDone: true,
+      message: "作业已经结束",
+      status,
+    };
+  }
+
+  const stopSpec = {
+    ...spec,
+    status: 7,
+    end_at: spec.end_at || new Date().toISOString(),
+  };
+  const stopResponse = await updateStarlightJobSpec(stopSpec);
+  const ok = stopResponse.ok && (stopResponse.body?.code === 200 || stopResponse.body?.code === 0);
+  if (!ok) {
+    throw new Error(stopResponse.body?.info || stopResponse.body?.message || `星光停止失败 HTTP ${stopResponse.status}`);
+  }
+
+  await wait(1500);
+  let nextStatus = null;
+  try {
+    nextStatus = await getStarlightJobStatus(cluster, jobId);
+  } catch {
+    nextStatus = null;
+  }
+  return {
+    stopped: true,
+    message: "停止请求已发送",
+    stopResponse,
+    status: nextStatus || status,
+  };
+}
+
 async function wait(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -1197,6 +1238,11 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/api/job-status") {
       const result = await getStarlightJobStatus(url.searchParams.get("cluster"), url.searchParams.get("jobId"));
+      return json(res, 200, result);
+    }
+    if (req.method === "POST" && url.pathname === "/api/job-stop") {
+      const form = await readBody(req);
+      const result = await stopStarlightJob(form.cluster, form.jobId);
       return json(res, 200, result);
     }
     if (req.method === "GET" && url.pathname === "/api/jobs") {

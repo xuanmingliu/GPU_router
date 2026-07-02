@@ -199,6 +199,36 @@ body.cx-store-market-only #main-container > :not(.cx-market-section) {
   color: #fff;
 }
 
+.cx-danger-btn {
+  height: 34px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 14px;
+  background: #dc2626;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 34px;
+}
+
+.cx-danger-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.cx-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 24px;
+}
+
 .cx-danger-note {
   margin: 16px 0 0 108px;
   padding: 9px 12px;
@@ -282,6 +312,55 @@ body.cx-store-market-only #main-container > :not(.cx-market-section) {
 .cx-phase-running .cx-live-dot,
 .cx-phase-syncing .cx-live-dot {
   background: #2563eb;
+}
+
+.cx-recent-job-control {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 360px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+.cx-recent-job-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.cx-recent-job-kicker {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.cx-recent-job-title {
+  margin-top: 3px;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cx-recent-job-meta {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cx-phase-succeeded {
