@@ -7,6 +7,7 @@
   let accountClickHandlerAttached = false;
   let nativeMenuObserver = null;
   let notificationCleanupInstalled = false;
+  let balanceRefreshTimer = null;
 
   function clearLocalAuth() {
     const exactKeys = [
@@ -582,6 +583,19 @@
     }
     activeBalance = payload.balance || "0.00";
     attachAccountClickHandler(payload.account);
+    if (!balanceRefreshTimer) {
+      balanceRefreshTimer = window.setInterval(async () => {
+        try {
+          const response = await fetch("/local-auth/session", { credentials: "same-origin", cache: "no-store" });
+          const next = await response.json();
+          if (next && next.ok && typeof next.balance !== "undefined") {
+            activeBalance = next.balance || "0.00";
+            const balanceNode = document.querySelector("#cx-local-auth-popover .cx-local-auth-balance");
+            if (balanceNode) balanceNode.textContent = `余额：${activeBalance} 元`;
+          }
+        } catch {}
+      }, 30000);
+    }
   }
 
   if (document.readyState === "loading") {

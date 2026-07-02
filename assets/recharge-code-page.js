@@ -2,6 +2,8 @@
   if (window.__cxRechargeCodePageLoaded) return;
   window.__cxRechargeCodePageLoaded = true;
 
+  let balanceTimer = null;
+
   function isRechargeRoute() {
     return location.pathname === "/console/recharge";
   }
@@ -115,6 +117,16 @@
     return response.json();
   }
 
+  async function refreshBalance() {
+    try {
+      const response = await fetch("/local-auth/session", { credentials: "same-origin", cache: "no-store" });
+      const payload = await response.json();
+      if (!payload?.ok) return;
+      const node = document.getElementById("cx-recharge-balance");
+      if (node) node.textContent = payload.balance || "0.00";
+    } catch {}
+  }
+
   function mountWithSession(session) {
     const container = document.querySelector("#main-container");
     if (!container) return false;
@@ -205,6 +217,9 @@
     if (!session.ok) {
       location.href = "/login";
       return;
+    }
+    if (!balanceTimer) {
+      balanceTimer = window.setInterval(refreshBalance, 30000);
     }
     if (mountWithSession(session)) return;
     let attempts = 0;

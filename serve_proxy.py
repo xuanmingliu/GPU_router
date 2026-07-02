@@ -4,11 +4,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, unquote, urlsplit
 from urllib.request import Request, urlopen
 from http import cookies
+from datetime import datetime, timezone
 import hashlib
 import os
 import json
 import secrets
 import time
+from threading import RLock
+from threading import Thread
 
 ROOT = Path(__file__).resolve().parent
 UPSTREAM = "https://gpu.ai-galaxy.cn"
@@ -21,6 +24,7 @@ STARLIGHT_BACKEND = os.environ.get(
 ).rstrip("/")
 AUTH_DB_PATH = ROOT / "data" / "local-auth.json"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30
+AUTH_DB_LOCK = RLock()
 DB_BACKEND = os.environ.get("DB_BACKEND", "json").strip().lower()
 MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
@@ -85,6 +89,7 @@ def ensure_auth_shape(data):
     data.setdefault("users", {})
     data.setdefault("sessions", {})
     data.setdefault("jobsByAccount", {})
+    data.setdefault("billingState", {})
     return data
 
 
@@ -327,34 +332,36 @@ def save_auth_db_postgres(data):
 
 
 def load_auth_db():
-    if mysql_enabled():
-        return load_auth_db_mysql()
-    if postgres_enabled():
-        return load_auth_db_postgres()
-    if not AUTH_DB_PATH.exists():
-        return ensure_auth_shape({})
-    try:
-        with AUTH_DB_PATH.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-        if not isinstance(data, dict):
+    with AUTH_DB_LOCK:
+        if mysql_enabled():
+            return load_auth_db_mysql()
+        if postgres_enabled():
+            return load_auth_db_postgres()
+        if not AUTH_DB_PATH.exists():
             return ensure_auth_shape({})
-        return ensure_auth_shape(data)
-    except (OSError, json.JSONDecodeError):
-        return ensure_auth_shape({})
+        try:
+            with AUTH_DB_PATH.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if not isinstance(data, dict):
+                return ensure_auth_shape({})
+            return ensure_auth_shape(data)
+        except (OSError, json.JSONDecodeError):
+            return ensure_auth_shape({})
 
 
 def save_auth_db(data):
-    if mysql_enabled():
-        save_auth_db_mysql(data)
-        return
-    if postgres_enabled():
-        save_auth_db_postgres(data)
-        return
-    AUTH_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = AUTH_DB_PATH.with_suffix(".tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, indent=2)
-    tmp.replace(AUTH_DB_PATH)
+    with AUTH_DB_LOCK:
+        if mysql_enabled():
+            save_auth_db_mysql(data)
+            return
+        if postgres_enabled():
+            save_auth_db_postgres(data)
+            return
+        AUTH_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = AUTH_DB_PATH.with_suffix(".tmp")
+        with tmp.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=2)
+        tmp.replace(AUTH_DB_PATH)
 
 
 def delete_session_token(token):
@@ -538,6 +545,190 @@ def hash_recharge_code(code):
 
 def format_money(cents):
     return f"{int(cents or 0) / 100:.2f}"
+
+
+def parse_epoch_seconds(value):
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        number = int(value)
+        if number > 10**12:
+            return number // 1000
+        return number
+    text = str(value).strip()
+    if not text:
+        return 0
+    if text.isdigit():
+        number = int(text)
+        if number > 10**12:
+            return number // 1000
+        return number
+    try:
+        normalized = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    except ValueError:
+        return 0
+
+
+def ceil_hours_from_seconds(total_seconds):
+    total_seconds = max(0, int(total_seconds or 0))
+    return (total_seconds + 3599) // 3600
+
+
+def job_billing_rate_cents(job):
+    cluster = str(job.get("cluster") or "").strip()
+    partition = str(job.get("partition") or "").strip()
+    base_rates = {
+        ("k8s_xingyiAI_2", "xy-a800x"): 500,
+        ("k8s_xingyiAI_2", "xy-a100"): 750,
+        ("k8s_xingyiAI_2", "xy-h100"): 1500,
+        ("k8s_xingyiAI_2", "xy-h100x"): 1500,
+        ("k8s_xingyiAI", "xy-a800"): 500,
+        ("k8s_xingyiAI", "a800-mig-3g.40gb-week"): 500,
+        ("k8s_xingyiAI", "mig-realtime"): 500,
+    }
+    return base_rates.get((cluster, partition))
+
+
+def job_started_epoch(job):
+    upstream = job.get("upstream") or {}
+    return parse_epoch_seconds(
+        upstream.get("startedAt")
+        or upstream.get("started_at")
+        or upstream.get("createdAt")
+        or upstream.get("created_at")
+        or job.get("createdAt")
+        or job.get("created_at")
+    )
+
+
+def job_ended_epoch(job):
+    upstream = job.get("upstream") or {}
+    return parse_epoch_seconds(upstream.get("endAt") or upstream.get("end_at"))
+
+
+def job_is_running(job):
+    summary = job.get("summary") or {}
+    phase = str(summary.get("phase") or "").lower()
+    status = str(summary.get("status") or job.get("upstream", {}).get("status") or "").lower()
+    return phase == "running" or status == "running"
+
+
+def append_balance_ledger_entry(data, account, direction, amount_cents, balance_after_cents, business_type, business_id, note):
+    entry = {
+        "account": account,
+        "direction": direction,
+        "amountCents": int(amount_cents or 0),
+        "balanceAfterCents": int(balance_after_cents or 0),
+        "businessType": business_type,
+        "businessId": business_id,
+        "note": note,
+        "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    data.setdefault("balanceLedger", []).append(entry)
+
+
+def settle_account_billing(account, jobs=None):
+    if not account:
+        return {"chargedCents": 0, "chargedHours": 0, "jobs": 0}
+    if jobs is None:
+        payload = fetch_starlight_jobs()
+        jobs = [job for job in (payload.get("jobs") or []) if job_key(job) in owned_job_keys(account)]
+    db = load_auth_db()
+    users = db.setdefault("users", {})
+    user = users.get(account)
+    if not user:
+        return {"chargedCents": 0, "chargedHours": 0, "jobs": 0}
+
+    billing_state = db.setdefault("billingState", {}).setdefault(account, {"jobs": {}})
+    jobs_state = billing_state.setdefault("jobs", {})
+    now = now_ts()
+    charged_cents = 0
+    charged_hours = 0
+    touched_jobs = 0
+
+    for job in jobs:
+        key = job_key(job)
+        if not key:
+            continue
+        rate_cents = job_billing_rate_cents(job)
+        if not rate_cents:
+            continue
+        started_at = job_started_epoch(job)
+        if not started_at:
+            continue
+        finished_at = job_ended_epoch(job)
+        running = job_is_running(job) and not finished_at
+        effective_end = now if running else finished_at
+        if not effective_end or effective_end < started_at:
+            continue
+        total_hours = ceil_hours_from_seconds(effective_end - started_at)
+        state = jobs_state.setdefault(key, {})
+        previous_hours = int(state.get("billedHours") or 0)
+        delta_hours = total_hours - previous_hours
+        gpu_count = max(1, int((job.get("resources") or {}).get("gpu") or 1))
+        if delta_hours > 0:
+            amount = int(delta_hours * rate_cents * gpu_count)
+            current_balance = int(user.get("balanceCents") or 0) - amount
+            user["balanceCents"] = current_balance
+            charged_cents += amount
+            charged_hours += delta_hours
+            append_balance_ledger_entry(
+                db,
+                account=account,
+                direction="out",
+                amount_cents=amount,
+                balance_after_cents=current_balance,
+                business_type="starlight_job",
+                business_id=key,
+                note=(
+                    f"星光作业计费 -{format_money(amount)} 元 "
+                    f"({delta_hours}h x {format_money(rate_cents * gpu_count)} 元/小时)"
+                ),
+            )
+            state["billedHours"] = total_hours
+        else:
+            state.setdefault("billedHours", previous_hours)
+        state.update({
+            "account": account,
+            "jobKey": key,
+            "cluster": job.get("cluster") or "",
+            "jobId": job.get("jobId") or "",
+            "partition": job.get("partition") or "",
+            "gpuCount": gpu_count,
+            "priceCentsPerHour": rate_cents * gpu_count,
+            "startedAt": started_at,
+            "endedAt": finished_at or None,
+            "running": bool(running),
+            "lastSeenPhase": (job.get("summary") or {}).get("phase") or "",
+            "lastSettledAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        })
+        touched_jobs += 1
+
+    save_auth_db(db)
+    return {"chargedCents": charged_cents, "chargedHours": charged_hours, "jobs": touched_jobs}
+
+
+def settle_all_accounts_once():
+    db = load_auth_db()
+    accounts = list((db.get("users") or {}).keys())
+    for account in accounts:
+        try:
+            settle_account_billing(account)
+        except Exception:
+            pass
+
+
+def billing_daemon():
+    while True:
+        try:
+            settle_all_accounts_once()
+        except Exception:
+            pass
+        time.sleep(300)
 
 
 def now_ts():
@@ -844,6 +1035,8 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
                 {"ok": False, "reason": "未登录"},
                 extra_headers={"Set-Cookie": self.clear_cookie_header()} if token else None,
             )
+        settle_account_billing(session["account"])
+        session, _ = self.session_record(session["token"])
         user = session.get("user") or {}
         balance_cents = int(user.get("balanceCents") or 0)
         return self.json_response({
@@ -1003,6 +1196,10 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             return {"total": 0, "jobs": []}
         payload = self.fetch_starlight_jobs()
         jobs = self.filter_jobs_for_account(payload.get("jobs") or [], session.get("account"))
+        try:
+            settle_account_billing(session.get("account"), jobs)
+        except Exception:
+            pass
         return {**payload, "total": len(jobs), "jobs": jobs}
 
     def console_status_value(self, phase):
@@ -1129,6 +1326,10 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
             return self.json_response({"status": 0, "reason": "ok", "data": empty_data})
         jobs_payload = self.fetch_starlight_jobs()
         jobs = self.filter_jobs_for_account(jobs_payload.get("jobs") or [], session.get("account"))
+        try:
+            settle_account_billing(session.get("account"), jobs)
+        except Exception:
+            pass
         instances = [self.console_instance_from_job(job, index) for index, job in enumerate(jobs, start=1)]
         if path == "/api/instance/get_instance_status_count":
             running = sum(1 for item in instances if item["Status"] == 1)
@@ -1333,6 +1534,7 @@ class ProxyStaticHandler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     init_mysql_schema()
     init_postgres_schema()
+    Thread(target=billing_daemon, daemon=True).start()
     print(f"Serving static + API/assets proxy on http://0.0.0.0:{PORT}/store")
     print(f"Data backend: {DB_BACKEND}")
     ThreadingHTTPServer(("0.0.0.0", PORT), ProxyStaticHandler).serve_forever()
