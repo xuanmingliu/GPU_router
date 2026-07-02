@@ -510,7 +510,7 @@
       <div class="flex items-center gap-6 ml-auto">
         <div class="text-right">
           <div class="text-base font-semibold text-primary whitespace-nowrap">${card.model}</div>
-          <div class="text-xs text-gray_text mt-1 whitespace-nowrap">${card.price || ""}</div>
+          <div class="text-sm font-semibold text-[#1f2937] mt-1 whitespace-nowrap">${card.price || ""}</div>
           <div class="text-xs text-gray_text mt-1 whitespace-nowrap">云容器 · 按实际使用计费</div>
         </div>
         <button class="cx-market-rent v-btn v-theme--light ${card.disabled ? "bg-gray-300 text-gray_text" : "bg-primary text-white"} rounded-lg text-none tracking-normal px-6" type="button" ${card.disabled ? "disabled" : ""}>
