@@ -39,6 +39,7 @@
       title: "NVIDIA A100 80GB",
       chip: "GPU",
       model: "A100",
+      price: "￥7.5 / 小时",
       cluster: "k8s_xingyiAI_2",
       partition: "xy-a100",
       plan: "default:12核/1块/120GiB",
@@ -50,6 +51,7 @@
       title: "NVIDIA A800",
       chip: "GPU",
       model: "A800",
+      price: "￥5 / 小时",
       cluster: "k8s_xingyiAI_2",
       partition: "xy-a800x",
       plan: "default:6核/1块/120GiB",
@@ -83,6 +85,7 @@
       title: "NVIDIA H100",
       chip: "GPU",
       model: "H100",
+      price: "￥15 / 小时",
       cluster: "k8s_xingyiAI_2",
       partition: "xy-h100",
       plan: "default:14核/1块/240GiB",
@@ -507,6 +510,7 @@
       <div class="flex items-center gap-6 ml-auto">
         <div class="text-right">
           <div class="text-base font-semibold text-primary whitespace-nowrap">${card.model}</div>
+          <div class="text-xs text-gray_text mt-1 whitespace-nowrap">${card.price || ""}</div>
           <div class="text-xs text-gray_text mt-1 whitespace-nowrap">云容器 · 按实际使用计费</div>
         </div>
         <button class="cx-market-rent v-btn v-theme--light ${card.disabled ? "bg-gray-300 text-gray_text" : "bg-primary text-white"} rounded-lg text-none tracking-normal px-6" type="button" ${card.disabled ? "disabled" : ""}>
