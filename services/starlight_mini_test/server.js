@@ -1051,19 +1051,7 @@ async function runStarlightDirectSubmit(form) {
 
   const quota = await findUserQuota(payload.runtime_params.cluster, payload.runtime_params.partition);
   if (!quota.ok) {
-    result.warnings.push(quota.reason);
-    result.submitResponse = {
-      status: 0,
-      ok: false,
-      body: {
-        code: 1600,
-        info: quota.reason,
-        spec: null,
-      },
-    };
-    await writeFile(logPath, JSON.stringify(result, null, 2));
-    result.log = `/runs/${path.basename(logPath)}`;
-    return result;
+    result.warnings.push(`quota 预检查未通过，继续交给星光提交接口确认：${quota.reason}`);
   }
 
   const submitResponse = await starlightApi("/api/job/submit", {
