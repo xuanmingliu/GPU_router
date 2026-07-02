@@ -48,9 +48,9 @@
       accent: "#16a34a",
     },
     {
-      title: "NVIDIA A800",
+      title: "NVIDIA A800 X",
       chip: "GPU",
-      model: "A800",
+      model: "A800 X",
       price: "￥5 / 小时",
       cluster: "k8s_xingyiAI_2",
       partition: "xy-a800x",
@@ -60,7 +60,7 @@
       accent: "#0891b2",
     },
     {
-      title: "NVIDIA A800 标准",
+      title: "NVIDIA A800",
       chip: "GPU",
       model: "A800",
       price: "￥5 / 小时",
