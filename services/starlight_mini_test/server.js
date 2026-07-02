@@ -52,6 +52,16 @@ async function readStoredCookieHeader() {
   }
 }
 
+async function readStoredUserName() {
+  if (!existsSync(AUTH_STATE)) return "";
+  try {
+    const state = JSON.parse(await readFile(AUTH_STATE, "utf8"));
+    return state.userName || "";
+  } catch {
+    return "";
+  }
+}
+
 function hasStarlightCredentials() {
   return Boolean(STARLIGHT_USERNAME && STARLIGHT_PASSWORD);
 }
@@ -651,10 +661,18 @@ async function checkStarlightAuth() {
 }
 
 async function findUserQuota(cluster, partition) {
-  const self = await starlightApi("/api/user/user/self", { method: "GET" });
-  const userName = self.body?.spec?.user_name;
+  let self = null;
+  try {
+    self = await starlightApi("/api/user/user/self", { method: "GET" });
+  } catch {
+    self = null;
+  }
+  const userName = self?.body?.spec?.user_name || self?.body?.spec?.userName || (await readStoredUserName()) || STARLIGHT_USERNAME;
   if (!userName) {
-    return { ok: false, reason: "未获取到星光用户名" };
+    return {
+      ok: false,
+      reason: "未获取到星光用户名；请确认 Render 后端服务已配置 STARLIGHT_USERNAME / STARLIGHT_PASSWORD 并完成重新部署。",
+    };
   }
   const quotas = await starlightApi(`/api/kcluster/partitions/userquotas/user/${encodeURIComponent(userName)}`, {
     method: "GET",
