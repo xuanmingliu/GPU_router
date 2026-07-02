@@ -677,7 +677,18 @@ async function findUserQuota(cluster, partition) {
   const quotas = await starlightApi(`/api/kcluster/partitions/userquotas/user/${encodeURIComponent(userName)}`, {
     method: "GET",
   });
-  const quota = (quotas.body?.spec || []).find((item) => item.cluster_name === cluster && item.partition_name === partition);
+  const quotaList = Array.isArray(quotas.body?.spec)
+    ? quotas.body.spec
+    : Array.isArray(quotas.body?.spec?.data)
+      ? quotas.body.spec.data
+      : Array.isArray(quotas.body?.data)
+        ? quotas.body.data
+        : [];
+  const quota = quotaList.find((item) => {
+    const clusterName = item.cluster_name || item.clusterName || item.cluster || item.Cluster || "";
+    const partitionName = item.partition_name || item.partitionName || item.partition || item.Partition || item.name || "";
+    return String(clusterName) === String(cluster) && String(partitionName) === String(partition);
+  });
   if (!quota) {
     return {
       ok: false,
